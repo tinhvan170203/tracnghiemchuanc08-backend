@@ -7,6 +7,7 @@ const thisinh = require('../controllers/thisinh');
 const checkRole = require('../middlewares/checkRole');
 const middlewareController = require('../middlewares/verifyToken');
 const chuyende = require('../controllers/chuyende');
+const common = require('../controllers/common');
 
 
 router.get('/fetch', middlewareController.verifyToken, checkRole('xem môn thi'), monthi.getMonthiList)
@@ -27,12 +28,13 @@ router.delete('/:id/cuoc-thi/:id1/delete',middlewareController.verifyToken,check
 router.get('/ket-qua/cuoc-thi/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), monthi.getKetquathi)
 
 // thí sinh dự thi 
-router.get('/:id/chuyen-de/fetch', middlewareController.verifyToken, chuyende.getChuyendes)
-router.post('/:id/chuyen-de/add', middlewareController.verifyToken, chuyende.addChuyende)
-router.put('/:id/chuyen-de/:id1/edit', middlewareController.verifyToken, chuyende.updatedChuyende)
-router.delete('/:id/chuyen-de/:id1/delete',middlewareController.verifyToken,  chuyende.deleteChuyende)
+router.get('/bai-thi/:id/preview', middlewareController.verifyToken, checkRole('xem cuộc thi'), common.previewTestAdmin)
+router.get('/:id/chuyen-de/fetch', middlewareController.verifyToken, checkRole('xem môn thi'), chuyende.getChuyendes)
+router.post('/:id/chuyen-de/add', middlewareController.verifyToken, checkRole('thêm môn thi'), chuyende.addChuyende)
+router.put('/:id/chuyen-de/:id1/edit', middlewareController.verifyToken, checkRole('sửa môn thi'), chuyende.updatedChuyende)
+router.delete('/:id/chuyen-de/:id1/delete', middlewareController.verifyToken, checkRole('xóa môn thi'), chuyende.deleteChuyende)
 
-router.get('/thongke', middlewareController.verifyToken, monthi.thongke);
-router.get('/top-cau-hoi-sai', middlewareController.verifyToken, monthi.thongKeCauHoiSai);
+router.get('/thongke', middlewareController.verifyToken, checkRole('xem cuộc thi'), monthi.thongke);
+router.get('/top-cau-hoi-sai', middlewareController.verifyToken, checkRole('xem cuộc thi'), monthi.thongKeCauHoiSai);
 router.get('/ok', monthi.updateAnswers)
 module.exports = router

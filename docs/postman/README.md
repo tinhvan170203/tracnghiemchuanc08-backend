@@ -86,10 +86,10 @@ node docs/postman/generate.js
 
 ## Lưu ý xác thực
 
-- Backend dùng **JWT qua HttpOnly cookie**, không phải Bearer token
+- JWT: sign và verify cùng `ACCESS_TOKEN_KEY` / `REFRESH_TOKEN_KEY` trong `.env`
 - Cookie names: `accessToken_thitracnghiem`, `refreshToken_thitracnghiem`
 - Login bị rate limit: **5 request/phút**
-- Đảm bảo `.env` có `ACCESS_TOKEN_KEY` khớp với key ký JWT (mặc định backend sign bằng `"vuvantinh_accessToken"`)
+- Session admin: gọi `GET /c08/auth/me` để xác thực cookie trước khi vào dashboard
 
 ## Port mặc định
 

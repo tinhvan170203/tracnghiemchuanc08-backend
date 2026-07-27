@@ -8,7 +8,7 @@ const LichsuThis = require("../models/LichsuThi");
 const { default: mongoose } = require("mongoose");
 const _ = require('lodash');
 const Tailieus = require("../models/Tailieu");
-
+const path = require("path");
 
 const crypto = require('crypto');
 // Cần một khóa bí mật (32 ký tự) và một vector khởi tạo (16 ký tự)
@@ -37,6 +37,22 @@ const decryptData = (encryptedText) => {
   return decrypted.toString();
 };
 
+const getExamSecretKey = (req) => {
+  return (
+    req.headers["x-exam-key"] ||
+    req.query?.secretKey ||
+    req.body?.secretKey ||
+    null
+  );
+};
+
+const assertExamSecret = (item, secretKey) => {
+  if (!secretKey || !item?.secretKey || String(secretKey) !== String(item.secretKey)) {
+    const error = new Error("Phiên bài thi không hợp lệ. Vui lòng vào thi lại.");
+    error.status = 403;
+    throw error;
+  }
+};
 
 // const { question, ...rest } = shuffledObj;
 // const result = Object.keys(rest);
@@ -223,6 +239,7 @@ module.exports = {
 
   checkedTest: async (req, res) => {
     let id = req.params.id; //id bài thi cần test
+    const secretKey = getExamSecretKey(req);
 
     try {
       let checked = await LichsuThis.findById(id);
@@ -231,6 +248,8 @@ module.exports = {
         error.status = 401;
         throw error;
       };
+
+      assertExamSecret(checked, secretKey);
 
       let checkedNopbai = checked.thoigiannopbai !== 0;
       if (checkedNopbai) {
@@ -241,10 +260,11 @@ module.exports = {
 
       let timeNow = new Date();
       timeNow = timeNow.getTime()
-      res.status(200).json({ timeNow, secretKey: checked.secretKey.toString('hex') })
+      // Không trả lại secretKey — client phải giữ key nhận từ loginTest
+      res.status(200).json({ timeNow })
     } catch (error) {
       console.log("lỗi: ", error.message);
-      res.status(500).json({
+      res.status(error.status || 500).json({
         status: "failed",
         message: error.message,
       });
@@ -252,47 +272,68 @@ module.exports = {
   },
 
   submitTest: async (req, res) => {
-    let questions = req.body;
+    // Body: { secretKey, answers: [{ _id, choice }, ...] } (cũng chấp nhận header x-exam-key)
+    const secretKey = getExamSecretKey(req);
+    const questions = Array.isArray(req.body) ? req.body : (req.body?.answers || []);
 
     let id = req.params.id; // id bai thi
     let time = new Date();
     let timeEndTest = time.getTime(); // đổi ra milisecond giây
     try {
       let item = await LichsuThis.findById(id).populate("questions.question")
-      // console.log(item)
+      if (!item) {
+        return res.status(404).json({ status: "failed", message: "Không tìm thấy bài thi" });
+      }
+
+      assertExamSecret(item, secretKey);
+
+      if (item.thoigiannopbai !== 0) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Bài thi đã được nộp trước đó, không thể nộp lại.",
+        });
+      }
+
+      // Cho phép trễ tối đa 60s so với giờ kết thúc (auto-submit / mạng chậm)
+      const graceMs = 60 * 1000;
+      if (timeEndTest > Number(item.thoigianketthuc) + graceMs) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Đã quá thời gian làm bài, không thể nộp.",
+        });
+      }
+
       let name = decryptData(item.thongtinthisinh.name)
       let choicedTrue = 0;
 
       let updatedQuestions = item.questions.map(question => {
-        // get question trùng với dữ liệu câu hỏi gửi lên
-        let compareQuestion = questions.find(i => i._id.toString() === question.question._id.toString());
+        let compareQuestion = questions.find(i => i._id?.toString() === question.question._id.toString());
+        const choice = compareQuestion?.choice !== undefined ? compareQuestion.choice : "";
 
-        // tính ra số câu tra lời đúng
-        if (question.question.answer === compareQuestion.choice) {
+        if (compareQuestion && question.question.answer === choice) {
           choicedTrue += 1
         }
-        //return  save db
-        return { question: question.question._id, options_sort: question.options_sort, choice: compareQuestion.choice !== undefined ? compareQuestion.choice : "" }
+        return { question: question.question._id, options_sort: question.options_sort, choice }
       });
 
       await LichsuThis.findOneAndUpdate({ _id: id }, {
         thoigiannopbai: timeEndTest,
         questions: updatedQuestions,
         socaudung: choicedTrue,
-        soluongcauhoi: updatedQuestions.length
+        soluongcauhoi: item.questions.length
       });
 
-      let allQuestion = questions.length;
+      let allQuestion = item.questions.length;
       let timeStartTest = (new Date(item.thoigianbatdau)).getTime()
       let timeTest = timeEndTest - timeStartTest;
 
       res.status(200).json({
         message: "Chúc mừng bạn đã hoàn thành bài thi", choicedTrue,
-        allQuestion, timeTest, mabaithi: item._id, thoigianbatdau: timeStartTest, name, secretKey: item.secretKey.toString('hex')
+        allQuestion, timeTest, mabaithi: item._id, thoigianbatdau: timeStartTest, name
       })
     } catch (error) {
       console.log("lỗi: ", error.message);
-      res.status(500).json({
+      res.status(error.status || 500).json({
         status: "failed",
         message: error.message,
       });
@@ -300,20 +341,28 @@ module.exports = {
   },
   previewTest: async (req, res) => {
     let id = req.params.id; // id bai thi
+    const secretKey = getExamSecretKey(req);
     try {
       let item = await LichsuThis.findById(id).populate("questions.question").populate('id_cuocthi').lean()
+      if (!item) {
+        return res.status(404).json({ status: "failed", message: "Không tìm thấy bài thi" });
+      }
+
+      assertExamSecret(item, secretKey);
+
+      if (item.thoigiannopbai === 0) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Chỉ xem lại bài thi sau khi đã nộp bài.",
+        });
+      }
 
       let choicedTrue = 0;
 
       let questionList = item.questions.map(i => {
-        // tính ra số câu tra lời đúng
         if (i.question.answer === i.choice) {
           choicedTrue += 1
         };
-
-        // let shuffledObj = shuffleObject({...i._doc.question});
-        // const { question,__v, _id, monthiString,createdAt, updatedAt, ...rest } = shuffledObj;
-        // const options_sort = Object.keys(rest);
 
         return { questionlist: i.question, options_sort: i.options_sort, choice: i.choice }
       });
@@ -329,6 +378,43 @@ module.exports = {
       res.status(200).json({ message: "", choicedTrue, allQuestion, questionList, thongtinthisinh, thoigianbatdau, thoigiannopbai, tencuocthi, mabaithi })
     } catch (error) {
       console.log("lỗi: ", error.message);
+      res.status(error.status || 500).json({
+        status: "failed",
+        message: error.message,
+      });
+    }
+  },
+
+  /** Preview bài thi cho admin (JWT) — không cần secretKey thí sinh */
+  previewTestAdmin: async (req, res) => {
+    let id = req.params.id;
+    try {
+      let item = await LichsuThis.findById(id).populate("questions.question").populate('id_cuocthi').lean()
+      if (!item) {
+        return res.status(404).json({ status: "failed", message: "Không tìm thấy bài thi" });
+      }
+
+      let choicedTrue = 0;
+      let questionList = item.questions.map(i => {
+        if (i.question?.answer === i.choice) {
+          choicedTrue += 1
+        };
+        return { questionlist: i.question, options_sort: i.options_sort, choice: i.choice }
+      });
+
+      res.status(200).json({
+        message: "",
+        choicedTrue,
+        allQuestion: item.questions.length,
+        questionList,
+        thongtinthisinh: item.thongtinthisinh,
+        thoigianbatdau: item.thoigianbatdau,
+        thoigiannopbai: item.thoigiannopbai,
+        tencuocthi: item.id_cuocthi?.tencuocthi,
+        mabaithi: item._id,
+      })
+    } catch (error) {
+      console.log("lỗi: ", error.message);
       res.status(500).json({
         status: "failed",
         message: error.message,
@@ -338,9 +424,12 @@ module.exports = {
 
   //sửa AI , thư viện
   saveFile: async (req, res) => {
-    let index = req.file.path.lastIndexOf('\\');
-    let link = req.file.path.slice(index + 1)
     try {
+      if (!req.file) {
+        return res.status(400).json({ status: "failed", message: "Chưa chọn file" });
+      }
+      // Chỉ lưu basename an toàn (multer đã sanitize)
+      const link = path.basename(req.file.filename);
       let item = new Tailieus({
         text: req.body.text,
         file: link,

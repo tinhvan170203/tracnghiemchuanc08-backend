@@ -85,7 +85,14 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: ["http://localhost:5173", "http://222.255.214.189", "https://tuyentruyenphapluatpc08hungyen.com", "https://antoangiaothong.conganhungyen.com/"],
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "https://tuyentruyenphapluatpc08hungyen.com",
+    "https://antoangiaothong.conganhungyen.com",
+  ],
   credentials: true,
 }));
 // app.use(express.json());
@@ -113,6 +120,18 @@ app.use('/c08', donviRoute);
 const path = require("path");
 const generateCertificate = require('./certicate.js');
 const middlewareController = require('./middlewares/verifyToken.js');
+const checkRole = require('./middlewares/checkRole.js');
+
+const decryptPii = (encryptedText) => {
+  if (!encryptedText || !String(encryptedText).includes(':')) return encryptedText || '';
+  const textParts = String(encryptedText).split(':');
+  const iv = Buffer.from(textParts.shift(), 'hex');
+  const encryptedData = Buffer.from(textParts.join(':'), 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
+  let decrypted = decipher.update(encryptedData);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+};
 
 const basePath = '';
 
@@ -165,17 +184,56 @@ app.post(
   "/c08/certificate",
   async (req, res) => {
    try {
-      const buffer =
-        await generateCertificate(
-          req.body
-        );
-      res.setHeader("Content-Type", "application/pdf");
+      const { mabaithi, secretKey } = req.body || {};
+      if (!mabaithi || !secretKey) {
+        return res.status(400).json({
+          success: false,
+          message: "Thiếu mabaithi hoặc secretKey",
+        });
+      }
 
+      const item = await LichsuThis.findById(mabaithi).populate("id_cuocthi");
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy bài thi",
+        });
+      }
+
+      if (String(item.secretKey) !== String(secretKey)) {
+        return res.status(403).json({
+          success: false,
+          message: "Phiên bài thi không hợp lệ",
+        });
+      }
+
+      if (!item.thoigiannopbai || item.thoigiannopbai === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Chỉ tạo chứng nhận sau khi đã nộp bài",
+        });
+      }
+
+      const name = decryptPii(item.thongtinthisinh?.name);
+      const tencuocthi = item.id_cuocthi?.tencuocthi || "";
+      const timeTest =
+        Number(item.thoigiannopbai) - Number(item.thoigianbatdau);
+
+      const buffer = await generateCertificate({
+        name,
+        tencuocthi,
+        mabaithi: String(item._id),
+        socaudung: item.socaudung || 0,
+        socauhoi: item.soluongcauhoi || item.questions?.length || 0,
+        time: timeTest,
+        thoigianbatdau: item.thoigianbatdau,
+      });
+
+      res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        "attachment; filename=certificate.png"
+        "attachment; filename=certificate.pdf"
       );
-
       res.send(buffer);
 
     } catch (err) {
@@ -183,7 +241,7 @@ app.post(
 
       res.status(500).json({
         success: false,
-        message: err.message
+        message: "Không tạo được chứng nhận",
       });
     }
   }
@@ -224,12 +282,12 @@ app.post(
 
 
 app.get("/c08/uploads/:filename", (req, res) => {
-  const filePath = path.join(__dirname, "upload", req.params.filename);
-  res.sendFile(filePath);
+  const { sendSafeFile } = require("./utils/safePath");
+  return sendSafeFile(res, path.join(__dirname, "upload"), req.params.filename);
 });
 app.get("/c08/public/:filename", (req, res) => {
-  const filePath = path.join(__dirname, "public", req.params.filename);
-  res.sendFile(filePath);
+  const { sendSafeFile } = require("./utils/safePath");
+  return sendSafeFile(res, path.join(__dirname, "public"), req.params.filename);
 });
 
 
@@ -237,12 +295,12 @@ const c08controller = require("../backend/c08/c08.js")
 const commoncontroller = require("../backend/controllers/common.js")
 app.get('/public/sumary/toan-quoc',  commoncontroller.publicThongke)
 // chuc nang rieng cua c08
-app.get('/c08/dia-phuong/list', middlewareController.verifyToken, c08controller.getDiaphuongs);
-app.post('/c08/dia-phuong', middlewareController.verifyToken, c08controller.addDiaphuong);
-app.put('/c08/dia-phuong/:id', middlewareController.verifyToken, c08controller.updatedDiaphuong);
-app.delete('/c08/dia-phuong/:id', middlewareController.verifyToken, c08controller.deleteDiaphuong);
+app.get('/c08/dia-phuong/list', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.getDiaphuongs);
+app.post('/c08/dia-phuong', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.addDiaphuong);
+app.put('/c08/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.updatedDiaphuong);
+app.delete('/c08/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.deleteDiaphuong);
 
-app.get('/c08/toan-quoc', middlewareController.verifyToken, c08controller.sumaryKetquas)
+app.get('/c08/toan-quoc', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.sumaryKetquas)
 
 const PORT = process.env.PORT || 4000;
 connectDB();

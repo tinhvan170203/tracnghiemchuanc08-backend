@@ -4,6 +4,25 @@ const Users = require("../models/User");
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
+const getAccessTokenKey = () => {
+  const key = process.env.ACCESS_TOKEN_KEY;
+  if (!key) throw new Error("ACCESS_TOKEN_KEY chưa được cấu hình trong .env");
+  return key;
+};
+
+const getRefreshTokenKey = () => {
+  const key = process.env.REFRESH_TOKEN_KEY;
+  if (!key) throw new Error("REFRESH_TOKEN_KEY chưa được cấu hình trong .env");
+  return key;
+};
+
+const cookieOptions = (maxAge) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge,
+});
+
 // Băm mật khẩu
 const hashPassword = async (password) => {
   return await bcrypt.hash(password, saltRounds);
@@ -19,72 +38,86 @@ module.exports = {
       let user = await Users.findOne({
         tentaikhoan: req.body.tentaikhoan,
       });
-      // console.log(user)
       if (!user) {
         return res.status(403).json({ status: false, message: "Sai tên đăng nhập" });
-      } else {
-
-        const isMatch = await comparePassword(req.body.matkhau, user.matkhau);
-        console.log(isMatch)
-        if (!isMatch) {
-          res.status(501).json({ status: "failed", message: "Mật khẩu không chính xác" });
-          return;
-        }
-        // console.log('123')
-        //cần kiểm tra xem client có refreshtoken k nếu có thì phải kiểm tra db và xóa đi khi login thành công và tạo mới refreshtoken
-        let refreshTokenCookie = req.cookies.refreshToken_thitracnghiem;
-        if (refreshTokenCookie) {
-          await RefreshTokens.findOneAndDelete({ refreshToken: refreshTokenCookie })
-        };
-
-        //generate accessToken, refreshToken
-        const accessToken = jwt.sign({ userId: user._id }, "vuvantinh_accessToken", {
-          expiresIn: '1h'
-        });
-
-
-        const refreshToken = jwt.sign({ userId: user._id }, "vuvantinh_refreshToken", {
-          expiresIn: '7d'
-        });
-
-        let newItem = new RefreshTokens({
-          refreshToken
-        });
-        await newItem.save();
-        res.cookie("accessToken_thitracnghiem", accessToken, {
-          httpOnly: true,
-          secure: false,
-          sameSite: "lax",
-          maxAge: 60 * 60 * 1000,
-        });
-
-        res.cookie("refreshToken_thitracnghiem", refreshToken, {
-          httpOnly: true,
-          secure: false,
-          sameSite: "lax",
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-
-
-        // res.status(200).json({ status: "success", _id: user._id, tentaikhoan: user.tentaikhoan, roles: user.roles, accessToken, refreshToken });
-        res.status(200).json({ status: "success", _id: user._id, tentaikhoan: user.tentaikhoan, roles: user.roles });
       }
+
+      const isMatch = await comparePassword(req.body.matkhau, user.matkhau);
+      if (!isMatch) {
+        return res.status(501).json({ status: "failed", message: "Mật khẩu không chính xác" });
+      }
+
+      let refreshTokenCookie = req.cookies.refreshToken_thitracnghiem;
+      if (refreshTokenCookie) {
+        await RefreshTokens.findOneAndDelete({ refreshToken: refreshTokenCookie });
+      }
+
+      const accessToken = jwt.sign({ userId: user._id }, getAccessTokenKey(), {
+        expiresIn: "1h",
+      });
+
+      const refreshToken = jwt.sign({ userId: user._id }, getRefreshTokenKey(), {
+        expiresIn: "7d",
+      });
+
+      let newItem = new RefreshTokens({ refreshToken });
+      await newItem.save();
+
+      res.cookie("accessToken_thitracnghiem", accessToken, cookieOptions(60 * 60 * 1000));
+      res.cookie("refreshToken_thitracnghiem", refreshToken, cookieOptions(7 * 24 * 60 * 60 * 1000));
+
+      res.status(200).json({
+        status: "success",
+        _id: user._id,
+        tentaikhoan: user.tentaikhoan,
+        roles: user.roles,
+      });
     } catch (error) {
-      console.log(error.message)
+      console.log(error.message);
       res.status(501).json({ status: "failed", message: "Lỗi đăng nhập hệ thống" });
     }
   },
+  getMe: async (req, res) => {
+    try {
+      const userId = req.userId?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "You are not authenticated" });
+      }
+
+      const user = await Users.findById(userId).select("-matkhau");
+      if (!user) {
+        return res.status(401).json({ message: "Tài khoản không tồn tại, vui lòng đăng nhập lại" });
+      }
+
+      return res.status(200).json({
+        status: "success",
+        _id: user._id,
+        tentaikhoan: user.tentaikhoan,
+        roles: user.roles,
+      });
+    } catch (error) {
+      console.log(error.message);
+      return res.status(501).json({ status: "failed", message: "Lỗi xác thực phiên đăng nhập" });
+    }
+  },
   logout: async (req, res) => {
-    //xóa refreshTonken trong database
     let refreshTokenCookie = req.cookies.refreshToken_thitracnghiem;
     try {
       if (refreshTokenCookie) {
-        await RefreshTokens.findOneAndDelete({ refreshToken: refreshTokenCookie })
-      };
+        await RefreshTokens.findOneAndDelete({ refreshToken: refreshTokenCookie });
+      }
 
-      //xóa cookie
-      // res.clearCookie('refreshToken_px01');
-      res.status(200).json({ status: "success", message: "Đăng xuất thành công" })
+      res.clearCookie("accessToken_thitracnghiem", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+      res.clearCookie("refreshToken_thitracnghiem", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+      res.status(200).json({ status: "success", message: "Đăng xuất thành công" });
     } catch (error) {
       console.log("lỗi: ", error.message);
       res.status(501).json({ status: "failed", message: "Lỗi server hệ thống" });
@@ -165,55 +198,42 @@ module.exports = {
   },
 
   requestRefreshToken: async (req, res) => {
-    // console.log(req.cookies)
     const refreshToken = req.cookies.refreshToken_thitracnghiem;
-    // console.log(refreshToken)
     if (!refreshToken) {
-      return res.status(501).json({ message: 'You are not authenticated' })
-    };
-    // console.log(refreshToken)
-    // kiểm tra xem trong db có refreshtoken này không nếu k có thì là k hợp lệ
+      return res.status(501).json({ message: "You are not authenticated" });
+    }
+
     const checkRefreshTokenInDb = await RefreshTokens.findOne({ refreshToken });
-    // console.log('token',checkRefreshTokenInDb)
-    // console.log(checkRefreshTokenInDb)
-    if (!checkRefreshTokenInDb) return res.status(402).json({ message: "Token không hợp lệ" });
+    if (!checkRefreshTokenInDb) {
+      return res.status(402).json({ message: "Token không hợp lệ" });
+    }
 
-    jwt.verify(refreshToken, "vuvantinh_refreshToken", async (err, user) => {
-      if (err) {
-        console.log(err.message)
-      };
+    jwt.verify(refreshToken, getRefreshTokenKey(), async (err, user) => {
+      if (err || !user?.userId) {
+        return res.status(403).json({ message: "Token đã hết hạn, vui lòng đăng nhập lại" });
+      }
 
-      const newAccessToken = jwt.sign({ userId: user.userId }, "vuvantinh_accessToken", {
-        expiresIn: '1d'
-      });
+      try {
+        const newAccessToken = jwt.sign({ userId: user.userId }, getAccessTokenKey(), {
+          expiresIn: "1h",
+        });
 
-      const newRefreshToken = jwt.sign({ userId: user.userId }, "vuvantinh_refreshToken", {
-        expiresIn: '7d'
-      });
+        const newRefreshToken = jwt.sign({ userId: user.userId }, getRefreshTokenKey(), {
+          expiresIn: "7d",
+        });
 
-      await RefreshTokens.findOneAndDelete({ refreshToken: refreshToken })
-      // thêm refreshtoken mới vào db sau đó trả về client accesstoken mới
-      let newItem = new RefreshTokens({
-        refreshToken: newRefreshToken
-      });
+        await RefreshTokens.findOneAndDelete({ refreshToken });
+        await new RefreshTokens({ refreshToken: newRefreshToken }).save();
 
-      await newItem.save()
-      res.cookie("accessToken_thitracnghiem", accessToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        maxAge: 15 * 60 * 1000,
-      });
+        res.cookie("accessToken_thitracnghiem", newAccessToken, cookieOptions(60 * 60 * 1000));
+        res.cookie("refreshToken_thitracnghiem", newRefreshToken, cookieOptions(7 * 24 * 60 * 60 * 1000));
 
-      res.cookie("refreshToken_thitracnghiem", refreshToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
-
-      res.status(200).json({ accessToken: newAccessToken, refreshToken: newRefreshToken })
-    })
+        return res.status(200).json({ status: "success" });
+      } catch (error) {
+        console.log(error.message);
+        return res.status(501).json({ message: "Lỗi làm mới phiên đăng nhập" });
+      }
+    });
   },
   editPhanquyendonvi: async (req, res) => {
     let id = req.params.id;

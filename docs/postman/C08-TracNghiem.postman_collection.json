@@ -125,6 +125,32 @@
           "response": []
         },
         {
+          "name": "Get Me (session)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Xác thực phiên hiện tại từ cookie JWT. Trả về user + roles.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
           "name": "Logout",
           "request": {
             "method": "GET",
@@ -524,9 +550,16 @@
                 "public",
                 "checkedTest",
                 "{{lichsuThiId}}"
+              ],
+              "query": [
+                {
+                  "key": "secretKey",
+                  "value": "{{examSecretKey}}",
+                  "disabled": false
+                }
               ]
             },
-            "description": "id = lịch sử thi (bài thi đang làm).\n\n**Auth:** Public (không cần đăng nhập)"
+            "description": "Cần secretKey (query hoặc header x-exam-key). Không trả lại secretKey.\n\n**Auth:** Public (không cần đăng nhập)"
           },
           "response": []
         },
@@ -551,9 +584,16 @@
                 "public",
                 "preview",
                 "{{lichsuThiId}}"
+              ],
+              "query": [
+                {
+                  "key": "secretKey",
+                  "value": "{{examSecretKey}}",
+                  "disabled": false
+                }
               ]
             },
-            "description": "**Auth:** Public (không cần đăng nhập)"
+            "description": "Cần secretKey. Chỉ xem sau khi đã nộp bài.\n\n**Auth:** Public (không cần đăng nhập)"
           },
           "response": []
         },
@@ -580,10 +620,10 @@
                 "submitTest"
               ]
             },
-            "description": "Body là mảng các câu trả lời.\n\n**Auth:** Public (không cần đăng nhập)",
+            "description": "Body: { secretKey, answers }. One-shot + kiểm tra hết giờ (+60s grace).\n\n**Auth:** Public (không cần đăng nhập)",
             "body": {
               "mode": "raw",
-              "raw": "[\n  {\n    \"_id\": \"cauhoi_id_1\",\n    \"choice\": \"option_a\"\n  },\n  {\n    \"_id\": \"cauhoi_id_2\",\n    \"choice\": \"option_b\"\n  }\n]",
+              "raw": "{\n  \"secretKey\": \"{{examSecretKey}}\",\n  \"answers\": [\n    {\n      \"_id\": \"cauhoi_id_1\",\n      \"choice\": \"option_a\"\n    },\n    {\n      \"_id\": \"cauhoi_id_2\",\n      \"choice\": \"option_b\"\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1293,6 +1333,34 @@
               ]
             },
             "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xóa cuộc thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Preview bài thi (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/bai-thi/{{lichsuThiId}}/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "bai-thi",
+                "{{lichsuThiId}}",
+                "preview"
+              ]
+            },
+            "description": "Admin xem lại bài thi không cần secretKey thí sinh.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
           },
           "response": []
         },
@@ -2511,10 +2579,10 @@
                 "certificate"
               ]
             },
-            "description": "Trả về file PDF.\n\n**Auth:** Public (không cần đăng nhập)",
+            "description": "Chỉ tạo được khi bài thi đã nộp + đúng secretKey. Dữ liệu lấy từ DB.\n\n**Auth:** Public (không cần đăng nhập)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Nguyễn Văn A\",\n  \"tencuocthi\": \"Cuộc thi ATGT\",\n  \"mabaithi\": \"BT001\",\n  \"socaudung\": 18,\n  \"socauhoi\": 20,\n  \"time\": 25,\n  \"thoigianbatdau\": \"2024-12-01T08:00:00\"\n}",
+              "raw": "{\n  \"mabaithi\": \"{{lichsuThiId}}\",\n  \"secretKey\": \"{{examSecretKey}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

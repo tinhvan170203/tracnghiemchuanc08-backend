@@ -4,25 +4,14 @@ const router = express.Router();
 const RedisStore = require('rate-limit-redis').default;
 const { createClient } = require('redis');
 const common = require('../controllers/common');
-const path = require('path')
-const multer = require('multer')
 const middlewareController = require('../middlewares/verifyToken');
+const checkRole = require('../middlewares/checkRole');
 const rateLimit = require('express-rate-limit');
-const storage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        cb(null, path.join(__dirname,`../upload`))
-    },
-    filename: function(req, file, cb) {
-        const originalName = file.originalname; // tên file gốc
-        const encodedName = Buffer.from(originalName, 'latin1').toString('utf8'); // mã hóa tên file
-        // cb(null, encodedName); // dùng tên file đã mã hóa
-        cb(null, + new Date() + '_' + encodedName)
-    }
-});
+const { docsUpload, handleMulterError } = require('../utils/upload');
 
-const upload = multer({
-    storage: storage,
-});
+const uploadDoc = (req, res, next) => {
+  docsUpload.single('file')(req, res, (err) => handleMulterError(err, req, res, next));
+};
 
 // 1. Tạo và kết nối Redis Client
 const redisClient = createClient({
@@ -62,8 +51,8 @@ router.get('/preview/:id', common.previewTest) // id laf lich sử thi hay bài 
 router.post('/:id/submitTest', common.submitTest)
 
 
-router.post('/save-file', middlewareController.verifyToken, upload.single('file'), common.saveFile);
-router.get('/auth/tai-lieu/fetch', middlewareController.verifyToken, common.fetchFile)
+router.post('/save-file', middlewareController.verifyToken, checkRole('xem cuộc thi'), uploadDoc, common.saveFile);
+router.get('/auth/tai-lieu/fetch', middlewareController.verifyToken, checkRole('xem cuộc thi'), common.fetchFile)
 router.get('/tai-lieu/fetch', common.fetchFile)
-router.delete('/tai-lieu/delete',middlewareController.verifyToken,  common.deleteFile)
+router.delete('/tai-lieu/delete',middlewareController.verifyToken, checkRole('xem cuộc thi'),  common.deleteFile)
 module.exports = router

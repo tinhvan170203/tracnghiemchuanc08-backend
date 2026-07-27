@@ -33,6 +33,14 @@ module.exports = [
   },
   {
     folder: 'Auth',
+    name: 'Get Me (session)',
+    method: 'GET',
+    path: '/c08/auth/me',
+    auth: true,
+    description: 'Xác thực phiên hiện tại từ cookie JWT. Trả về user + roles.',
+  },
+  {
+    folder: 'Auth',
     name: 'Logout',
     method: 'GET',
     path: '/c08/auth/logout',
@@ -152,7 +160,8 @@ module.exports = [
     method: 'GET',
     path: '/c08/public/checkedTest/{{lichsuThiId}}',
     auth: false,
-    description: 'id = lịch sử thi (bài thi đang làm).',
+    description: 'Cần secretKey (query hoặc header x-exam-key). Không trả lại secretKey.',
+    query: [{ key: 'secretKey', value: '{{examSecretKey}}' }],
   },
   {
     folder: 'Public - Thi trắc nghiệm',
@@ -160,6 +169,8 @@ module.exports = [
     method: 'GET',
     path: '/c08/public/preview/{{lichsuThiId}}',
     auth: false,
+    description: 'Cần secretKey. Chỉ xem sau khi đã nộp bài.',
+    query: [{ key: 'secretKey', value: '{{examSecretKey}}' }],
   },
   {
     folder: 'Public - Thi trắc nghiệm',
@@ -167,11 +178,14 @@ module.exports = [
     method: 'POST',
     path: '/c08/public/{{lichsuThiId}}/submitTest',
     auth: false,
-    description: 'Body là mảng các câu trả lời.',
-    body: [
-      { _id: 'cauhoi_id_1', choice: 'option_a' },
-      { _id: 'cauhoi_id_2', choice: 'option_b' },
-    ],
+    description: 'Body: { secretKey, answers }. One-shot + kiểm tra hết giờ (+60s grace).',
+    body: {
+      secretKey: '{{examSecretKey}}',
+      answers: [
+        { _id: 'cauhoi_id_1', choice: 'option_a' },
+        { _id: 'cauhoi_id_2', choice: 'option_b' },
+      ],
+    },
   },
   {
     folder: 'Public - Tài liệu',
@@ -385,6 +399,15 @@ module.exports = [
     auth: true,
     role: 'xóa cuộc thi',
     query: [{ key: 'tencuocthi', value: '' }],
+  },
+  {
+    folder: 'Cuộc thi',
+    name: 'Preview bài thi (admin)',
+    method: 'GET',
+    path: '/c08/mon-thi/bai-thi/{{lichsuThiId}}/preview',
+    auth: true,
+    role: 'xem cuộc thi',
+    description: 'Admin xem lại bài thi không cần secretKey thí sinh.',
   },
   {
     folder: 'Cuộc thi',
@@ -736,15 +759,10 @@ module.exports = [
     path: '/c08/certificate',
     auth: false,
     body: {
-      name: 'Nguyễn Văn A',
-      tencuocthi: 'Cuộc thi ATGT',
-      mabaithi: 'BT001',
-      socaudung: 18,
-      socauhoi: 20,
-      time: 25,
-      thoigianbatdau: '2024-12-01T08:00:00',
+      mabaithi: '{{lichsuThiId}}',
+      secretKey: '{{examSecretKey}}',
     },
-    description: 'Trả về file PDF.',
+    description: 'Chỉ tạo được khi bài thi đã nộp + đúng secretKey. Dữ liệu lấy từ DB.',
   },
   {
     folder: 'Khác',
