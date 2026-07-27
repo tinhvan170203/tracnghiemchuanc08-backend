@@ -1,0 +1,2582 @@
+{
+  "info": {
+    "_postman_id": "c08-tracnghiem-api",
+    "name": "C08 Trắc Nghiệm API",
+    "description": "API collection cho hệ thống trắc nghiệm C08.\n\n**Cách dùng:**\n1. Import environment (Local hoặc Production)\n2. Chạy request **Auth > Login** trước\n3. Cookie JWT sẽ được lưu vào environment tự động\n\nRegenerate: `node docs/postman/generate.js`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const accessToken = pm.environment.get('accessToken');",
+          "const refreshToken = pm.environment.get('refreshToken');",
+          "const cookies = [];",
+          "if (accessToken) cookies.push('accessToken_thitracnghiem=' + accessToken);",
+          "if (refreshToken) cookies.push('refreshToken_thitracnghiem=' + refreshToken);",
+          "if (cookies.length) {",
+          "    pm.request.headers.upsert({ key: 'Cookie', value: cookies.join('; ') });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Đăng nhập. Trả về cookie accessToken_thitracnghiem và refreshToken_thitracnghiem. Rate limit: 5 req/phút.\n\n**Auth:** Public (không cần đăng nhập)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tentaikhoan\": \"{{tentaikhoan}}\",\n  \"matkhau\": \"{{matkhau}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const cookies = pm.cookies.toObject();",
+                  "    if (cookies.accessToken_thitracnghiem) {",
+                  "        pm.environment.set('accessToken', cookies.accessToken_thitracnghiem);",
+                  "    }",
+                  "    if (cookies.refreshToken_thitracnghiem) {",
+                  "        pm.environment.set('refreshToken', cookies.refreshToken_thitracnghiem);",
+                  "    }",
+                  "    const json = pm.response.json();",
+                  "    if (json._id) pm.environment.set('userId', json._id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/change-pass",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "change-pass"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tentaikhoan\": \"{{tentaikhoan}}\",\n  \"matkhau\": \"matkhau_cu\",\n  \"matkhaumoi\": \"matkhau_moi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/requestRefreshToken",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "requestRefreshToken"
+              ]
+            },
+            "description": "Cần cookie refreshToken_thitracnghiem.\n\n**Auth:** Cookie refreshToken_thitracnghiem"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/users/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "users",
+                "fetch"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem tài khoản`"
+          },
+          "response": []
+        },
+        {
+          "name": "Add User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/users/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "users",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `thêm tài khoản`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tentaikhoan\": \"user_moi\",\n  \"matkhau\": \"matkhau123\",\n  \"thutu\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit User Roles",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/users/edit/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "users",
+                "edit",
+                "{{userId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa tài khoản`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roles\": [\n    \"xem môn thi\",\n    \"xem cuộc thi\"\n  ],\n  \"page\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit User Phan Quyen Don Vi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/users/edit-phanquyendonvi/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "users",
+                "edit-phanquyendonvi",
+                "{{userId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa phân quyền quản lý môn thi`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantrinhomdonvi\": [\n    \"{{monthiId}}\"\n  ],\n  \"page\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/auth/users/delete/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "auth",
+                "users",
+                "delete",
+                "{{userId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xóa tài khoản`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public - Thi trắc nghiệm",
+      "item": [
+        {
+          "name": "Danh sách đơn vị",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/fetch/danhsachdonvi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "fetch",
+                "danhsachdonvi"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Danh sách môn thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/fetch/danhsachmonthi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "fetch",
+                "danhsachmonthi"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Thông tin cuộc thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/info/cuoc-thi/{{cuocthiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "info",
+                "cuoc-thi",
+                "{{cuocthiId}}"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Kiểm tra cuộc thi active",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/checkedCuocthi",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "checkedCuocthi"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{cuocthiId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Login thi (đăng ký thí sinh)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/loginTest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "loginTest"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nguyễn Văn A\",\n  \"phone\": \"0912345678\",\n  \"birthday\": \"1990-01-01\",\n  \"id_cuocthi\": \"{{cuocthiId}}\",\n  \"donvi\": \"{{donviId}}\",\n  \"hokhau\": \"Hưng Yên\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Kiểm tra thời gian thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/checkedTest/{{lichsuThiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "checkedTest",
+                "{{lichsuThiId}}"
+              ]
+            },
+            "description": "id = lịch sử thi (bài thi đang làm).\n\n**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Preview kết quả thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/preview/{{lichsuThiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "preview",
+                "{{lichsuThiId}}"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Nộp bài thi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/{{lichsuThiId}}/submitTest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "{{lichsuThiId}}",
+                "submitTest"
+              ]
+            },
+            "description": "Body là mảng các câu trả lời.\n\n**Auth:** Public (không cần đăng nhập)",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"_id\": \"cauhoi_id_1\",\n    \"choice\": \"option_a\"\n  },\n  {\n    \"_id\": \"cauhoi_id_2\",\n    \"choice\": \"option_b\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public - Tài liệu",
+      "item": [
+        {
+          "name": "Danh sách tài liệu (public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/tai-lieu/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "tai-lieu",
+                "fetch"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Danh sách tài liệu (auth)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/auth/tai-lieu/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "auth",
+                "tai-lieu",
+                "fetch"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload tài liệu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/save-file",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "save-file"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "text",
+                  "value": "Mô tả tài liệu",
+                  "type": "text"
+                },
+                {
+                  "key": "thutu",
+                  "value": "1",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa tài liệu",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/tai-lieu/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "tai-lieu",
+                "delete"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{tailieuId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Learning",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/learning/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "learning",
+                "dashboard"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Chuyên đề theo môn thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/learning/{{monthiId}}/chuyendes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "learning",
+                "{{monthiId}}",
+                "chuyendes"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Câu hỏi theo chuyên đề",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/learning/chuyendes/{{chuyendeId}}/cauhois",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "learning",
+                "chuyendes",
+                "{{chuyendeId}}",
+                "cauhois"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Môn thi",
+      "item": [
+        {
+          "name": "Danh sách môn thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "fetch"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "tenmonthi",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "mota",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem môn thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Môn thi của user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/fetch-monthiOfUser",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "fetch-monthiOfUser"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem môn thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Chi tiết môn thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/detail/fetch/{{monthiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "detail",
+                "fetch",
+                "{{monthiId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem môn thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm môn thi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `thêm môn thi`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenmonthi\": \"Môn thi mới\",\n  \"mota\": \"Mô tả\",\n  \"thutu\": 1,\n  \"link_test\": \"\",\n  \"queryParams\": {\n    \"mota\": \"\",\n    \"tenmonthi\": \"\",\n    \"page\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sửa môn thi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/edit/{{monthiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "edit",
+                "{{monthiId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa môn thi`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenmonthi\": \"Tên môn thi\",\n  \"mota\": \"Mô tả\",\n  \"thutu\": 1,\n  \"link_test\": \"\",\n  \"queryParams\": {\n    \"mota\": \"\",\n    \"tenmonthi\": \"\",\n    \"page\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa môn thi",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/delete/{{monthiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "delete",
+                "{{monthiId}}"
+              ],
+              "query": [
+                {
+                  "key": "tenmonthi",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "mota",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xóa môn thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Thống kê",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/thongke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "thongke"
+              ],
+              "query": [
+                {
+                  "key": "fromDate",
+                  "value": "2024-01-01",
+                  "disabled": false
+                },
+                {
+                  "key": "toDate",
+                  "value": "2024-12-31",
+                  "disabled": false
+                },
+                {
+                  "key": "monthi",
+                  "value": "{{monthiId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
+          "name": "Top câu hỏi sai",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/top-cau-hoi-sai",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "top-cau-hoi-sai"
+              ],
+              "query": [
+                {
+                  "key": "idCuocThi",
+                  "value": "{{cuocthiId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cuộc thi",
+      "item": [
+        {
+          "name": "Danh sách cuộc thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/cuoc-thi-list/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "cuoc-thi-list",
+                "fetch"
+              ],
+              "query": [
+                {
+                  "key": "tencuocthi",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm cuộc thi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/cuoc-thi/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "cuoc-thi",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `thêm cuộc thi`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tencuocthi\": \"Cuộc thi mới\",\n  \"soluongcauhoi\": 20,\n  \"thoigianthi\": 30,\n  \"ngaytochucthi\": \"2024-12-01\",\n  \"password\": \"\",\n  \"config\": [\n    {\n      \"chuyende\": \"{{chuyendeId}}\",\n      \"soluongcauhoi\": 5\n    }\n  ],\n  \"queryParams\": {\n    \"tencuocthi\": \"\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Bật/tắt trạng thái cuộc thi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/cuoc-thi/{{cuocthiId}}/edit-status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "cuoc-thi",
+                "{{cuocthiId}}",
+                "edit-status"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa trạng thái cuộc thi`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tencuocthi\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cập nhật cuộc thi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/cuoc-thi/{{cuocthiId}}/update-option",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "cuoc-thi",
+                "{{cuocthiId}}",
+                "update-option"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa cuộc thi`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tencuocthi\": \"Tên cuộc thi\",\n  \"soluongcauhoi\": 20,\n  \"thoigianthi\": 30,\n  \"ngaytochucthi\": \"2024-12-01\",\n  \"config\": [\n    {\n      \"chuyende\": \"{{chuyendeId}}\",\n      \"soluongcauhoi\": 5\n    }\n  ],\n  \"queryParams\": {\n    \"tencuocthi\": \"\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa cuộc thi",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/cuoc-thi/{{cuocthiId}}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "cuoc-thi",
+                "{{cuocthiId}}",
+                "delete"
+              ],
+              "query": [
+                {
+                  "key": "tencuocthi",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xóa cuộc thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Kết quả cuộc thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/ket-qua/cuoc-thi/{{cuocthiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "ket-qua",
+                "cuoc-thi",
+                "{{cuocthiId}}"
+              ],
+              "query": [
+                {
+                  "key": "tungay",
+                  "value": "2024-01-01",
+                  "disabled": false
+                },
+                {
+                  "key": "denngay",
+                  "value": "2024-12-31",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chuyên đề",
+      "item": [
+        {
+          "name": "Danh sách chuyên đề",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/chuyen-de/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "chuyen-de",
+                "fetch"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm chuyên đề",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/chuyen-de/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "chuyen-de",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Chuyên đề mới\",\n  \"link_test\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sửa chuyên đề",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/chuyen-de/{{chuyendeId}}/edit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "chuyen-de",
+                "{{chuyendeId}}",
+                "edit"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tên chuyên đề\",\n  \"link_test\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa chuyên đề",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/{{monthiId}}/chuyen-de/{{chuyendeId}}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "{{monthiId}}",
+                "chuyen-de",
+                "{{chuyendeId}}",
+                "delete"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Câu hỏi",
+      "item": [
+        {
+          "name": "Danh sách câu hỏi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/cau-hoi/fetch/{{monthiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "cau-hoi",
+                "fetch",
+                "{{monthiId}}"
+              ],
+              "query": [
+                {
+                  "key": "question",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "chuyende",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem câu hỏi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm câu hỏi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/cau-hoi/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "cau-hoi",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `thêm câu hỏi`",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "question",
+                  "value": "Nội dung câu hỏi?",
+                  "type": "text"
+                },
+                {
+                  "key": "option_a",
+                  "value": "Đáp án A",
+                  "type": "text"
+                },
+                {
+                  "key": "option_b",
+                  "value": "Đáp án B",
+                  "type": "text"
+                },
+                {
+                  "key": "option_c",
+                  "value": "Đáp án C",
+                  "type": "text"
+                },
+                {
+                  "key": "option_d",
+                  "value": "Đáp án D",
+                  "type": "text"
+                },
+                {
+                  "key": "option_e",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "answer",
+                  "value": "option_a",
+                  "type": "text"
+                },
+                {
+                  "key": "chuyende",
+                  "value": "{{chuyendeId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "monthi",
+                  "value": "{{monthiId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "queryParams",
+                  "value": "{\"question\":\"\",\"chuyende\":\"\",\"monthi\":\"\"}",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sửa câu hỏi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/cau-hoi/edit/{{cauhoiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "cau-hoi",
+                "edit",
+                "{{cauhoiId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa câu hỏi`",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "question",
+                  "value": "Nội dung câu hỏi?",
+                  "type": "text"
+                },
+                {
+                  "key": "option_a",
+                  "value": "Đáp án A",
+                  "type": "text"
+                },
+                {
+                  "key": "option_b",
+                  "value": "Đáp án B",
+                  "type": "text"
+                },
+                {
+                  "key": "option_c",
+                  "value": "Đáp án C",
+                  "type": "text"
+                },
+                {
+                  "key": "option_d",
+                  "value": "Đáp án D",
+                  "type": "text"
+                },
+                {
+                  "key": "option_e",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "answer",
+                  "value": "option_a",
+                  "type": "text"
+                },
+                {
+                  "key": "chuyende",
+                  "value": "{{chuyendeId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "monthi",
+                  "value": "{{monthiId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "id_edit",
+                  "value": "{{cauhoiId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "queryParams",
+                  "value": "{\"question\":\"\",\"chuyende\":\"\",\"monthi\":\"\"}",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa câu hỏi",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/cau-hoi/delete/{{cauhoiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "cau-hoi",
+                "delete",
+                "{{cauhoiId}}"
+              ],
+              "query": [
+                {
+                  "key": "question",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "chuyende",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "monthi",
+                  "value": "{{monthiId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xóa câu hỏi`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Đơn vị",
+      "item": [
+        {
+          "name": "Danh sách đơn vị",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/donvi/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "donvi",
+                "fetch"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "tendonvi",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "kyhieu",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem đơn vị`"
+          },
+          "response": []
+        },
+        {
+          "name": "Đơn vị quản lý của user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/donviquanly/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "donviquanly",
+                "fetch"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem đội`"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm đơn vị",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/donvi/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "donvi",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `thêm đơn vị`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tendonvi\": \"Đơn vị mới\",\n  \"kyhieu\": \"DV01\",\n  \"thutu\": 1,\n  \"queryParams\": {\n    \"tendonvi\": \"\",\n    \"kyhieu\": \"\",\n    \"page\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sửa đơn vị",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/donvi/edit/{{donviId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "donvi",
+                "edit",
+                "{{donviId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa đơn vị`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tendonvi\": \"Tên đơn vị\",\n  \"kyhieu\": \"DV01\",\n  \"thutu\": 1,\n  \"queryParams\": {\n    \"tendonvi\": \"\",\n    \"kyhieu\": \"\",\n    \"page\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa đơn vị",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/donvi/delete/{{donviId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "donvi",
+                "delete",
+                "{{donviId}}"
+              ],
+              "query": [
+                {
+                  "key": "tendonvi",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "kyhieu",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xóa đơn vị`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Đội",
+      "item": [
+        {
+          "name": "Danh sách đội",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/doi/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "doi",
+                "fetch"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "tendoi",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "kyhieu",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "donvi",
+                  "value": "{{donviId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem đội`"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm đội",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/doi/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "doi",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `thêm đội`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tendoi\": \"Đội mới\",\n  \"kyhieu\": \"D01\",\n  \"thutu\": 1,\n  \"donvi\": \"{{donviId}}\",\n  \"queryParams\": {\n    \"tendoi\": \"\",\n    \"kyhieu\": \"\",\n    \"donvi\": \"\",\n    \"page\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sửa đội",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/doi/edit/{{doiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "doi",
+                "edit",
+                "{{doiId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `sửa đội`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tendoi\": \"Tên đội\",\n  \"kyhieu\": \"D01\",\n  \"thutu\": 1,\n  \"donvi\": \"{{donviId}}\",\n  \"queryParams\": {\n    \"tendoi\": \"\",\n    \"kyhieu\": \"\",\n    \"donvi\": \"\",\n    \"page\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa đội",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/doi/delete/{{doiId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "doi",
+                "delete",
+                "{{doiId}}"
+              ],
+              "query": [
+                {
+                  "key": "tendoi",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "kyhieu",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "donvi",
+                  "value": "{{donviId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xóa đội`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Video",
+      "item": [
+        {
+          "name": "Danh sách video",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/video/fetch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "video",
+                "fetch"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Tăng lượt xem",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/video/tang-view",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "video",
+                "tang-view"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "{{videoId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm video",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/video/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "video",
+                "add"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "name",
+                  "value": "Tên video",
+                  "type": "text"
+                },
+                {
+                  "key": "thutu",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "mota",
+                  "value": "Mô tả",
+                  "type": "text"
+                },
+                {
+                  "key": "link_orther",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "is_source_link_orther",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sửa video",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/video/edit/{{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "video",
+                "edit",
+                "{{videoId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tên video\",\n  \"thutu\": 1,\n  \"mota\": \"Mô tả\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa video",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/video/delete/{{videoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "video",
+                "delete",
+                "{{videoId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "C08 Admin",
+      "item": [
+        {
+          "name": "Danh sách địa phương",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/dia-phuong/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "dia-phuong",
+                "list"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
+          "name": "Thêm địa phương",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/dia-phuong",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "dia-phuong"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hưng Yên\",\n  \"domain\": \"https://example.com\",\n  \"thutu\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sửa địa phương",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/dia-phuong/{{diaphuongId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "dia-phuong",
+                "{{diaphuongId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Hưng Yên\",\n  \"domain\": \"https://example.com\",\n  \"thutu\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa địa phương",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/dia-phuong/{{diaphuongId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "dia-phuong",
+                "{{diaphuongId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
+          "name": "Thống kê toàn quốc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/toan-quoc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "toan-quoc"
+              ],
+              "query": [
+                {
+                  "key": "fromDate",
+                  "value": "2024-01-01",
+                  "disabled": false
+                },
+                {
+                  "key": "toDate",
+                  "value": "2024-12-31",
+                  "disabled": false
+                },
+                {
+                  "key": "list",
+                  "value": "{{diaphuongId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)"
+          },
+          "response": []
+        },
+        {
+          "name": "Thống kê toàn quốc (public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/public/sumary/toan-quoc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "sumary",
+                "toan-quoc"
+              ],
+              "query": [
+                {
+                  "key": "fromDate",
+                  "value": "2024-01-01",
+                  "disabled": false
+                },
+                {
+                  "key": "toDate",
+                  "value": "2024-12-31",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Khác",
+      "item": [
+        {
+          "name": "Tạo chứng nhận PDF",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/certificate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "certificate"
+              ]
+            },
+            "description": "Trả về file PDF.\n\n**Auth:** Public (không cần đăng nhập)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nguyễn Văn A\",\n  \"tencuocthi\": \"Cuộc thi ATGT\",\n  \"mabaithi\": \"BT001\",\n  \"socaudung\": 18,\n  \"socauhoi\": 20,\n  \"time\": 25,\n  \"thoigianbatdau\": \"2024-12-01T08:00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Tải file upload",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/uploads/{{filename}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "uploads",
+                "{{filename}}"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        },
+        {
+          "name": "Tải file public",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/public/{{filename}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "public",
+                "{{filename}}"
+              ]
+            },
+            "description": "**Auth:** Public (không cần đăng nhập)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

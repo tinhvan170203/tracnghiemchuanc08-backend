@@ -1,0 +1,53 @@
+---
+description: Tự động cập nhật Postman docs khi thêm/sửa/xóa API routes
+globs: backend/routes/**/*.js,backend/index.js,backend/docs/postman/**
+alwaysApply: false
+---
+
+# Đồng bộ Postman Documentation
+
+Khi thêm, sửa hoặc xóa API endpoint trong backend, **bắt buộc** cập nhật Postman docs.
+
+## Quy trình
+
+1. Sửa route trong `routes/*.js` hoặc `index.js`
+2. Cập nhật `docs/postman/endpoints.js` — thêm/sửa/xóa entry tương ứng
+3. Chạy: `node docs/postman/generate.js`
+4. Commit cả route changes và generated collection
+
+## Thêm endpoint mới
+
+Thêm object vào `docs/postman/endpoints.js`:
+
+```js
+{
+  folder: 'Tên nhóm',        // Auth | Môn thi | Cuộc thi | ...
+  name: 'Tên request',
+  method: 'POST',
+  path: '/c08/mon-thi/add',
+  auth: true,                // false = public, 'refresh' = refresh token
+  role: 'thêm môn thi',      // nếu có checkRole()
+  body: { tenmonthi: '...' },
+  query: [{ key: 'page', value: '1' }],  // nếu có
+}
+```
+
+Sau đó chạy generator. **Không sửa trực tiếp** file `C08-TracNghiem.postman_collection.json`.
+
+## Sửa/xóa endpoint
+
+- Sửa entry tương ứng trong `endpoints.js`, rồi regenerate
+- Xóa entry, rồi regenerate
+
+## Biến environment mới
+
+Nếu endpoint dùng biến mới (vd. `{{newId}}`), thêm vào cả hai file:
+- `C08-Local.postman_environment.json`
+- `C08-Production.postman_environment.json`
+
+## Checklist trước khi hoàn thành task API
+
+- [ ] Route đã được đăng ký trong `routes/*.js` hoặc `index.js`
+- [ ] Entry đã có trong `docs/postman/endpoints.js`
+- [ ] Đã chạy `node docs/postman/generate.js`
+- [ ] Collection JSON đã được cập nhật
