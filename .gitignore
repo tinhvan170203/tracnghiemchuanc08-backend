@@ -25,6 +25,9 @@ out/
 # Static / uploads (user-generated)
 public/
 uploads/
+upload/
+ai-knowledge/*
+!ai-knowledge/.gitkeep
 
 # Logs
 logs/

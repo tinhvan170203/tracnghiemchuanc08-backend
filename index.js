@@ -6,7 +6,6 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv').config();
 var cookies = require("cookie-parser");
 var bodyParser = require('body-parser')
-const { OpenAI } = require('openai');
 app.use(cookies());
 const fs = require('fs')
 const rateLimit = require('express-rate-limit');
@@ -109,6 +108,8 @@ const commonRoute = require('./routes/common');
 const cauhoiRoute = require('./routes/cauhoi');
 const videoRoute = require('./routes/video');
 const learningRoute = require('./routes/learning');
+const knowledgeRoute = require('./routes/knowledge');
+const chatRoute = require('./routes/chat');
 
 app.use('/c08/public', commonRoute);
 app.use('/c08/learning', learningRoute);
@@ -116,6 +117,9 @@ app.use('/c08/video', videoRoute);
 app.use('/c08/auth', authRoute);
 app.use('/c08/mon-thi', monthiRoute);
 app.use('/c08/cau-hoi', cauhoiRoute);
+app.use('/c08/ai-knowledge', knowledgeRoute);
+app.use('/c08/chat-gpt', chatRoute);
+app.use('/api/chat-gpt', chatRoute);
 app.use('/c08', donviRoute);
 const path = require("path");
 const generateCertificate = require('./certicate.js');
@@ -160,25 +164,6 @@ app.use(
 //     }}
 //   }
 // })
-
-const openai = new OpenAI({ apiKey: process.env.API_GPT_4 });
-
-// System prompt cố định (theo yêu cầu của bạn)
-// Bạn là Trợ lý ảo của Cảnh sát giao thông Công an tỉnh Hưng Yên.
-// Nếu như câu hỏi về địa chỉ của Phòng cảnh sát giao thông Hưng Yên, thì bạn trả lời rằng: số xx Hải thượng lãn ông, phường Phố Hiến, tỉnh Hưng Yên".
-// Số điện thoại đường dây nóng của cảnh sát giao thông Hưng yên là : 0794898989.
-// Phó giám đốc - Đại tá Nguyễn Trung Thành đang phụ trách phòng giao thông.
-// Để phản ánh thông tin về tình hình trật tự giao thông thì có thể phản ánh, liên hệ trực tiếp với đồng chí Vũ Trung Thành - PGĐ Công an tỉnh.
-const systemInstruction = {
-  role: 'system',
-  content: `
-QUY TẮC BẮT BUỘC:
-1. Phải tuân thủ nguyên tắc trả lời các kết quả, thông tin mới nhất, cập nhật theo thời gian gần đây nhất ví dụ như mức phạt, trừ điểm giấy phép lái xe... thì phải theo ghị định 168/2024/NĐ-CP ngày 26/12/2024 của Chính phủ Việt Nam
-2. Phạm vi trả lời: Chỉ trả lời các vấn đề liên quan đến lĩnh vực giao thông; nội dung của Nghị định 168/2024/NĐ-CP ngày 26/12/2024 của Chính phủ, Luật Đường bộ và các quy định an toàn giao thông tại Việt Nam.
-3. Định dạng: Tuyệt đối KHÔNG sử dụng các ký tự định dạng Markdown như dấu sao đôi (**), dấu thăng (#) hay danh sách phức tầm. Trả lời bằng văn bản thuần (plain text), ngắn gọn, dễ đọc.
-4. Thái độ: Lịch sự, chuyên nghiệp, trả lời ngắn gọn, đúng trọng tâm.`
-};
-
 
 app.post(
   "/c08/certificate",
@@ -247,39 +232,6 @@ app.post(
   }
 );
 
-// app.post('/c08/chat-gpt', async (req, res) => {
-//   try {
-//     const { history = [] } = req.body;
-//     // Đảm bảo lịch sử là mảng và có thể ghép với hệ thống prompt
-//     const messages = [systemInstruction, ...history];
-
-//     const callModel = async (modelName) => {
-//       const response = await openai.chat.completions.create({
-//         model: modelName,
-//         messages: messages,
-//         // max_tokens: 500,
-//         // temperature: 0.2,
-//       });
-//       // console.log('OpenAI response:', JSON.stringify(response, null, 2));
-//       return response?.choices?.[0]?.message?.content ?? response?.choices?.[0]?.text ?? '';
-//     };
-
-//     let reply = await callModel('gpt-5.4-mini-2026-03-17');
-//     // let reply = await callModel('gpt-5.4-2026-03-05');
-
-//     if (!reply) {
-//       return res.status(500).json({ error: 'Lỗi trả lời từ AI' });
-//     }
-
-//     res.json({ reply });
-
-//   } catch (error) {
-//     console.log(error.message)
-//     // Xử lý lỗi, thử fallback nếu là lỗi liên quan đến mô hình
-//     return res.status(500).json({ error: 'Lỗi máy chủ AI' });
-//   }
-// });
-
 
 app.get("/c08/uploads/:filename", (req, res) => {
   const { sendSafeFile } = require("./utils/safePath");
@@ -302,7 +254,7 @@ app.delete('/c08/dia-phuong/:id', middlewareController.verifyToken, checkRole('x
 
 app.get('/c08/toan-quoc', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.sumaryKetquas)
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 connectDB();
 
 app.listen(PORT, () => {

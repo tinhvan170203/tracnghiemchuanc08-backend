@@ -2556,6 +2556,171 @@
       ]
     },
     {
+      "name": "AI Knowledge",
+      "item": [
+        {
+          "name": "Danh sách file kiến thức AI",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/ai-knowledge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "ai-knowledge"
+              ]
+            },
+            "description": "List file KB (status: processing | ready | failed).\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Upload file kiến thức AI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/ai-knowledge/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "ai-knowledge",
+                "upload"
+              ]
+            },
+            "description": "Upload PDF/DOCX/TXT. Sau upload hệ thống extract → chunk → embedding. Lưu {{knowledgeFileId}} từ response.item._id.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Xóa file kiến thức AI",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/ai-knowledge/{{knowledgeFileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "ai-knowledge",
+                "{{knowledgeFileId}}"
+              ]
+            },
+            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI Chat",
+      "item": [
+        {
+          "name": "Chat GPT (alias /api)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/chat-gpt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "chat-gpt"
+              ]
+            },
+            "description": "Public chat. Ưu tiên trả lời từ file KB (embedding); không đủ thì web. Response: { reply, sourceType: file|web|mixed, sources }.\n\n**Auth:** Public (không cần đăng nhập)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"history\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Nồng độ cồn xe máy bị phạt như thế nào?\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Chat GPT (/c08)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/chat-gpt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "chat-gpt"
+              ]
+            },
+            "description": "Cùng logic với /api/chat-gpt.\n\n**Auth:** Public (không cần đăng nhập)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"history\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Nồng độ cồn xe máy bị phạt như thế nào?\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Khác",
       "item": [
         {

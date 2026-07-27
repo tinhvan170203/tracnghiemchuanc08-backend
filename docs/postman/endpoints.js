@@ -751,6 +751,69 @@ module.exports = [
     ],
   },
 
+  // ─── AI Knowledge / Chat ─────────────────────────────────────────────────────
+  {
+    folder: 'AI Knowledge',
+    name: 'Danh sách file kiến thức AI',
+    method: 'GET',
+    path: '/c08/ai-knowledge',
+    auth: true,
+    role: 'xem cuộc thi',
+    description: 'List file KB (status: processing | ready | failed).',
+  },
+  {
+    folder: 'AI Knowledge',
+    name: 'Upload file kiến thức AI',
+    method: 'POST',
+    path: '/c08/ai-knowledge/upload',
+    auth: true,
+    role: 'xem cuộc thi',
+    bodyType: 'formdata',
+    formdata: [{ key: 'file', type: 'file', src: '' }],
+    description: 'Upload PDF/DOCX/TXT. Sau upload hệ thống extract → chunk → embedding. Lưu {{knowledgeFileId}} từ response.item._id.',
+  },
+  {
+    folder: 'AI Knowledge',
+    name: 'Xóa file kiến thức AI',
+    method: 'DELETE',
+    path: '/c08/ai-knowledge/{{knowledgeFileId}}',
+    auth: true,
+    role: 'xem cuộc thi',
+  },
+  {
+    folder: 'AI Chat',
+    name: 'Chat GPT (alias /api)',
+    method: 'POST',
+    path: '/api/chat-gpt',
+    auth: false,
+    body: {
+      history: [
+        {
+          role: 'user',
+          content: 'Nồng độ cồn xe máy bị phạt như thế nào?',
+        },
+      ],
+    },
+    description:
+      'Public chat. Ưu tiên trả lời từ file KB (embedding); không đủ thì web. Response: { reply, sourceType: file|web|mixed, sources }.',
+  },
+  {
+    folder: 'AI Chat',
+    name: 'Chat GPT (/c08)',
+    method: 'POST',
+    path: '/c08/chat-gpt',
+    auth: false,
+    body: {
+      history: [
+        {
+          role: 'user',
+          content: 'Nồng độ cồn xe máy bị phạt như thế nào?',
+        },
+      ],
+    },
+    description: 'Cùng logic với /api/chat-gpt.',
+  },
+
   // ─── Khác ───────────────────────────────────────────────────────────────────
   {
     folder: 'Khác',

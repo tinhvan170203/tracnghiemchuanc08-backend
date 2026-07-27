@@ -149,6 +149,7 @@ module.exports = {
   docsUpload,
   imageUpload,
   videoUpload,
+  createUploader,
   handleMulterError,
   buildSafeFilename,
 };
