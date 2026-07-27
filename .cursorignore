@@ -1,0 +1,34 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+credentials.json
+secrets.json
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# Static / uploads (user-generated)
+public/
+uploads/
+
+# Logs & caches
+*.log
+.cache/
+.parcel-cache/
+.eslintcache
+
+# OS & editor
+.DS_Store
+Thumbs.db
