@@ -111,36 +111,27 @@ const learningRoute = require('./routes/learning');
 const knowledgeRoute = require('./routes/knowledge');
 const chatRoute = require('./routes/chat');
 
-app.use('/c08/public', commonRoute);
-app.use('/c08/learning', learningRoute);
-app.use('/c08/video', videoRoute);
-app.use('/c08/auth', authRoute);
-app.use('/c08/mon-thi', monthiRoute);
-app.use('/c08/cau-hoi', cauhoiRoute);
-app.use('/c08/ai-knowledge', knowledgeRoute);
-app.use('/c08/chat-gpt', chatRoute);
+app.use('/api/public', commonRoute);
+app.use('/api/learning', learningRoute);
+app.use('/api/video', videoRoute);
+app.use('/api/auth', authRoute);
+app.use('/api/mon-thi', monthiRoute);
+app.use('/api/cau-hoi', cauhoiRoute);
+app.use('/api/ai-knowledge', knowledgeRoute);
 app.use('/api/chat-gpt', chatRoute);
-app.use('/c08', donviRoute);
+app.use('/api/chat-gpt', chatRoute);
+app.use('/api', donviRoute);
 const path = require("path");
 const generateCertificate = require('./certicate.js');
 const middlewareController = require('./middlewares/verifyToken.js');
 const checkRole = require('./middlewares/checkRole.js');
 
-const decryptPii = (encryptedText) => {
-  if (!encryptedText || !String(encryptedText).includes(':')) return encryptedText || '';
-  const textParts = String(encryptedText).split(':');
-  const iv = Buffer.from(textParts.shift(), 'hex');
-  const encryptedData = Buffer.from(textParts.join(':'), 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
-  let decrypted = decipher.update(encryptedData);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return decrypted.toString();
-};
+const { decryptData: decryptPii } = require('./utils/aesPii');
 
 const basePath = '';
 
 app.use(
-  '/public',
+  '/api/public',
   (req, res, next) => {
     // Cho phép các trang web origin khác (frontend) tải tài nguyên static này
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -166,7 +157,7 @@ app.use(
 // })
 
 app.post(
-  "/c08/certificate",
+  "/api/certificate",
   async (req, res) => {
    try {
       const { mabaithi, secretKey } = req.body || {};
@@ -233,11 +224,11 @@ app.post(
 );
 
 
-app.get("/c08/uploads/:filename", (req, res) => {
+app.get("/api/uploads/:filename", (req, res) => {
   const { sendSafeFile } = require("./utils/safePath");
   return sendSafeFile(res, path.join(__dirname, "upload"), req.params.filename);
 });
-app.get("/c08/public/:filename", (req, res) => {
+app.get("/api/public/:filename", (req, res) => {
   const { sendSafeFile } = require("./utils/safePath");
   return sendSafeFile(res, path.join(__dirname, "public"), req.params.filename);
 });
@@ -245,16 +236,18 @@ app.get("/c08/public/:filename", (req, res) => {
 
 const c08controller = require("../backend/c08/c08.js")
 const commoncontroller = require("../backend/controllers/common.js")
-app.get('/public/sumary/toan-quoc',  commoncontroller.publicThongke)
+app.get('/api/public/sumary/toan-quoc',  commoncontroller.publicThongke)
 // chuc nang rieng cua c08
-app.get('/c08/dia-phuong/list', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.getDiaphuongs);
-app.post('/c08/dia-phuong', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.addDiaphuong);
-app.put('/c08/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.updatedDiaphuong);
-app.delete('/c08/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.deleteDiaphuong);
+app.get('/api/dia-phuong/list', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.getDiaphuongs);
+app.post('/api/dia-phuong', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.addDiaphuong);
+app.put('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.updatedDiaphuong);
+app.delete('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.deleteDiaphuong);
 
-app.get('/c08/toan-quoc', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.sumaryKetquas)
 
-const PORT = process.env.PORT || 5000;
+//hàm này thì để nguyên k sửa c08 vì link về mãy chủ c08
+app.get('/api/toan-quoc', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.sumaryKetquas)
+
+const PORT = process.env.PORT || 4000;
 connectDB();
 
 app.listen(PORT, () => {

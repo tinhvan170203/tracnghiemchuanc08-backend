@@ -26,6 +26,7 @@ router.put('/:id/cuoc-thi/:id1/update-option', middlewareController.verifyToken,
 router.delete('/:id/cuoc-thi/:id1/delete',middlewareController.verifyToken,checkRole('xóa cuộc thi'),  monthi.deleteCuocthi)
 
 router.get('/ket-qua/cuoc-thi/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), monthi.getKetquathi)
+router.get('/ket-qua/cuoc-thi/:id/export-excel', middlewareController.verifyToken, checkRole('xem cuộc thi'), monthi.exportKetquaExcel)
 
 // thí sinh dự thi 
 router.get('/bai-thi/:id/preview', middlewareController.verifyToken, checkRole('xem cuộc thi'), common.previewTestAdmin)

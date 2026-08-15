@@ -12,7 +12,7 @@ ensureKnowledgeDir();
 
 const knowledgeUpload = createUploader({
   destDir: KNOWLEDGE_DIR,
-  allowedExts: [".pdf", ".docx", ".txt, .xlsx"],
+  allowedExts: [".pdf", ".docx", ".txt", ".xlsx"],
   allowedMimes: [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -117,7 +117,12 @@ router.get('/chuyendes/:chuyendeId/cauhois', async (req, res) => {
       _id: c._id,
       question: c.question,
       image: c.image,
-      answerText: c[c.answer] || null, // c.answer = "option_b" -> lấy c["option_b"]
+      answer: c.answer,
+      option_a: c.option_a,      // answerText: c.answer || null, // c.answer = "option_b" -> lấy c["option_b"]
+      option_b: c.option_b,      // answerText: c.answer || null, // c.answer = "option_b" -> lấy c["option_b"]
+      option_c: c.option_c,      // answerText: c.answer || null, // c.answer = "option_b" -> lấy c["option_b"]
+      option_d: c.option_d,      // answerText: c.answer || null, // c.answer = "option_b" -> lấy c["option_b"]
+      option_e: c.option_e     // answerText: c.answer || null, // c.answer = "option_b" -> lấy c["option_b"]
     }));
 
     res.json({ total: result.length, cauhois: result, chuyende, monthiId: chuyende.monthi});

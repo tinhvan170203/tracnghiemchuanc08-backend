@@ -25,7 +25,11 @@ const lichsuthiSchema = new Schema({
     phone: String, // la  don vi
     birthday: String,
     donvi: String, // la so dien thoai
-    hokhau: String
+    hokhau: String,
+    gioitinh: String, // Nam | Nữ
+    loaixe: String, // Ô tô | Mô tô | Cả hai
+    hang_gplx: String,
+    nghenghiep: String,
   },
   soluongcauhoi: Number,
   socaudung: Number,

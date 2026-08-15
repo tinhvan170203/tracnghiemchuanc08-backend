@@ -43,6 +43,7 @@ module.exports = {
       }
 
       const isMatch = await comparePassword(req.body.matkhau, user.matkhau);
+      // console.log(isMatch)
       if (!isMatch) {
         return res.status(501).json({ status: "failed", message: "Mật khẩu không chính xác" });
       }

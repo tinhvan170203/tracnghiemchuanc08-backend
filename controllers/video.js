@@ -23,7 +23,7 @@ module.exports = {
     addVideo: async (req, res) => {
         try {
             let { name, thutu, mota, link_orther, is_source_link_orther } = req.body;
-
+            is_source_link_orther = is_source_link_orther === 'true' ? true : false
             // 🛡️ Kiểm tra xem người dùng đã chọn file chưa
             if (!is_source_link_orther && !req.file) {
                 return res.status(400).json({
@@ -36,11 +36,11 @@ module.exports = {
             let safeFileName = "";
             let fileSizeInMB = "";
             if (!is_source_link_orther && req.file) {
-                 safeFileName = path.basename(req.file.filename) || "";
-                 videoLink = `${safeFileName}`;
-    
+                safeFileName = path.basename(req.file.filename) || "";
+                videoLink = `${safeFileName}`;
+
                 // Tính dung lượng file gọn gàng (VD: 15.4 MB)
-                 fileSizeInMB = (req.file.size / (1024 * 1024)).toFixed(2) + " MB";
+                fileSizeInMB = (req.file.size / (1024 * 1024)).toFixed(2) + " MB";
 
             };
             // Lưu vào Database

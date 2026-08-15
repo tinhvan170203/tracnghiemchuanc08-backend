@@ -11,31 +11,7 @@ const Tailieus = require("../models/Tailieu");
 const path = require("path");
 
 const crypto = require('crypto');
-// Cần một khóa bí mật (32 ký tự) và một vector khởi tạo (16 ký tự)
-// Trong thực tế, hãy lưu cái này vào file .env, KHÔNG để trực tiếp trong code
-// const SECRET_KEY = Buffer.from('12345678901234567890123456789012'); // 32 bytes
-const IV_LENGTH = 16;
-
-// 1. Hàm mã hóa (Dùng cho Tên, Tuổi, SĐT...)
-const encryptData = (text) => {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
-  let encrypted = cipher.update(text.toString());
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  // Trả về iv + dữ liệu mã hóa để sau này còn giải mã được
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
-};
-
-// 2. Hàm giải mã (Để lấy lại tên thật hiển thị lên web)
-const decryptData = (encryptedText) => {
-  const textParts = encryptedText.split(':');
-  const iv = Buffer.from(textParts.shift(), 'hex');
-  const encryptedData = Buffer.from(textParts.join(':'), 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
-  let decrypted = decipher.update(encryptedData);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return decrypted.toString();
-};
+const { encryptData, decryptData, decryptThisinh } = require('../utils/aesPii');
 
 const getExamSecretKey = (req) => {
   return (
@@ -120,7 +96,7 @@ module.exports = {
   },
 
   loginTest: async (req, res) => {
-    let { name, phone, birthday, id_cuocthi, donvi, hokhau } = req.body;
+    let { name, phone, birthday, id_cuocthi, donvi, hokhau, gioitinh, loaixe, hang_gplx, nghenghiep } = req.body;
     // console.log(req.body)
     try {
       let item = await Cuocthis.findById(id_cuocthi);
@@ -210,7 +186,15 @@ module.exports = {
         thoigianketthuc: timeEnd,
         secretKey: secretKey.toString('hex'),
         thongtinthisinh: {
-          name: encryptData(name), phone: encryptData(phone), birthday, donvi: encryptData(donvi), hokhau
+          name: encryptData(name),
+          phone: encryptData(phone),
+          birthday,
+          donvi: encryptData(donvi),
+          hokhau,
+          gioitinh: gioitinh || "",
+          loaixe: loaixe || "",
+          hang_gplx: hang_gplx || "",
+          nghenghiep: nghenghiep || "",
         },
         id_cuocthi,
         thoigiannopbai: 0,
@@ -367,7 +351,7 @@ module.exports = {
         return { questionlist: i.question, options_sort: i.options_sort, choice: i.choice }
       });
 
-      let thongtinthisinh = item.thongtinthisinh;
+      let thongtinthisinh = decryptThisinh(item.thongtinthisinh);
       let thoigianbatdau = item.thoigianbatdau;
       let thoigiannopbai = item.thoigiannopbai;
       let tencuocthi = item.id_cuocthi.tencuocthi;
@@ -407,7 +391,7 @@ module.exports = {
         choicedTrue,
         allQuestion: item.questions.length,
         questionList,
-        thongtinthisinh: item.thongtinthisinh,
+        thongtinthisinh: decryptThisinh(item.thongtinthisinh),
         thoigianbatdau: item.thoigianbatdau,
         thoigiannopbai: item.thoigiannopbai,
         tencuocthi: item.id_cuocthi?.tencuocthi,

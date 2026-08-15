@@ -519,7 +519,7 @@
             "description": "**Auth:** Public (không cần đăng nhập)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Nguyễn Văn A\",\n  \"phone\": \"0912345678\",\n  \"birthday\": \"1990-01-01\",\n  \"id_cuocthi\": \"{{cuocthiId}}\",\n  \"donvi\": \"{{donviId}}\",\n  \"hokhau\": \"Hưng Yên\"\n}",
+              "raw": "{\n  \"name\": \"Nguyễn Văn A\",\n  \"phone\": \"Lớp 12A1\",\n  \"birthday\": 2005,\n  \"id_cuocthi\": \"{{cuocthiId}}\",\n  \"donvi\": \"0912345678\",\n  \"hokhau\": \"Hưng Yên\",\n  \"gioitinh\": \"Nam\",\n  \"loaixe\": \"Mô tô\",\n  \"hang_gplx\": \"A1\",\n  \"nghenghiep\": \"Học sinh\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1390,17 +1390,88 @@
               "query": [
                 {
                   "key": "tungay",
-                  "value": "2024-01-01",
+                  "value": "",
                   "disabled": false
                 },
                 {
                   "key": "denngay",
-                  "value": "2024-12-31",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "xeploai",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "hoten",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
                   "disabled": false
                 }
               ]
             },
-            "description": "**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+            "description": "Phân trang server: page (1-based), limit (max 100). Trả summary xếp loại + cautraloisai.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Xuất Excel kết quả cuộc thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/ket-qua/cuoc-thi/{{cuocthiId}}/export-excel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "ket-qua",
+                "cuoc-thi",
+                "{{cuocthiId}}",
+                "export-excel"
+              ],
+              "query": [
+                {
+                  "key": "tungay",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "denngay",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "xeploai",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "hoten",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Tải file .xlsx (blob). Cột gồm giới tính, loại xe, GPLX, nghề nghiệp, thời gian bắt đầu/kết thúc, nội dung câu trả lời sai.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
           },
           "response": []
         }

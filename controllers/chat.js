@@ -18,7 +18,7 @@ const chatRateLimiter = rateLimit({
   message: { error: "Bạn gửi quá nhiều câu hỏi. Vui lòng thử lại sau." },
 });
 
-const BASE_SYSTEM = `Bạn là Trợ lý ảo cảnh sát giao thông (C08).
+const BASE_SYSTEM = `Bạn là Trợ lý ảo cảnh sát giao thông.
 QUY TẮC:
 1. Chỉ trả lời vấn đề liên quan an toàn giao thông, Luật Đường bộ, Nghị định 168/2024/NĐ-CP và quy định ATGT Việt Nam.
 2. Không dùng Markdown (không **, #, danh sách phức tạp). Trả lời plain text, ngắn gọn, lịch sự.
@@ -115,6 +115,8 @@ const chatController = {
           role: "system",
           content: `${BASE_SYSTEM}
 
+Bạn là trợ lý ảo cảnh sát giao thông, chỉ trả lời về lĩnh vực giao thông, không trả lời các lĩnh vực khác.
+Trả lời ngắn gọn, đúng trọng tâm, lịch sử, thái độ tôn trọng người hỏi.
 ƯU TIÊN TUYỆT ĐỐI tài liệu nội bộ bên dưới.
 Chỉ trả lời dựa trên TÀI LIỆU NỘI BỘ.
 Nếu tài liệu không đủ căn cứ để trả lời chính xác, hãy trả lời ĐÚNG MỘT DÒNG gồm đúng chuỗi: ${NEED_WEB_MARKER}

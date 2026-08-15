@@ -6,33 +6,48 @@ const Donvis = require("../models/Donvi");
 const LichsuThis = require("../models/LichsuThi");
 const Monthis = require("../models/Monthi");
 const Users = require("../models/User");
-const crypto = require('crypto');
 const dayjs = require('dayjs');
-// Cần một khóa bí mật (32 ký tự) và một vector khởi tạo (16 ký tự)
-// Trong thực tế, hãy lưu cái này vào file .env, KHÔNG để trực tiếp trong code
-// const SECRET_KEY = Buffer.from('12345678901234567890123456789012'); // 32 bytes
-const IV_LENGTH = 16;
+const ExcelJS = require('exceljs');
+const { buildKetquaRows, toExcelRow } = require('../utils/ketquaHelpers');
+const { decryptData, decryptThisinh } = require('../utils/aesPii');
 
-// 1. Hàm mã hóa (Dùng cho Tên, Tuổi, SĐT...)
-const encryptData = (text) => {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
-  let encrypted = cipher.update(text.toString());
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  // Trả về iv + dữ liệu mã hóa để sau này còn giải mã được
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
-};
+async function loadKetquaDataset(id, query) {
+  const { tungay, denngay, xeploai, hoten } = query;
+  const cuocthi = await Cuocthis.findById(id);
+  if (!cuocthi) {
+    return { cuocthi: null, rows: [], summary: null, totalLuotthi: 0 };
+  }
 
-// 2. Hàm giải mã (Để lấy lại tên thật hiển thị lên web)
-const decryptData = (encryptedText) => {
-  const textParts = encryptedText.split(':');
-  const iv = Buffer.from(textParts.shift(), 'hex');
-  const encryptedData = Buffer.from(textParts.join(':'), 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
-  let decrypted = decipher.update(encryptedData);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return decrypted.toString();
-};
+  const list_baithi = await LichsuThis.find({ id_cuocthi: id })
+    .populate({
+      path: "questions.question",
+      select: "answer question option_a option_b option_c option_d option_e",
+    })
+    .select(
+      "questions createdAt socaudung thongtinthisinh thoigianbatdau thoigiannopbai"
+    )
+    .lean();
+
+  const totalLuotthi = list_baithi.filter((item) => {
+    if (!tungay && !denngay) return true;
+    const from = tungay || "1990-01-01";
+    const to = denngay || "3010-01-01";
+    const date = dayjs(item.createdAt).format("YYYY-MM-DD");
+    return (
+      new Date(date).getTime() >= new Date(from).getTime() &&
+      new Date(date).getTime() <= new Date(to).getTime()
+    );
+  }).length;
+
+  const { rows, summary } = buildKetquaRows(list_baithi, cuocthi, decryptData, {
+    tungay: tungay || "1990-01-01",
+    denngay: denngay || "3010-01-01",
+    xeploai: xeploai || "",
+    hoten: hoten || "",
+  });
+
+  return { cuocthi, rows, summary: { ...summary, totalLuotthi }, totalLuotthi };
+}
 
 module.exports = {
   //controller monthi
@@ -420,137 +435,133 @@ module.exports = {
   },
 
   getKetquathi: async (req, res) => {
-    let id = req.params.id; //id cuoocj thi cần lấy kết quả
-    let { tungay, denngay } = req.query;
-
-    if (!tungay) {
-      tungay = "1990-01-01"
-    };
-
-    if (!denngay) {
-      denngay = "3010-01-01"
-    }
+    const id = req.params.id;
+    let { tungay, denngay, xeploai, hoten, page, limit } = req.query;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
 
     try {
-      let cuocthi = await Cuocthis.findById(id);
+      const { cuocthi, rows, summary, totalLuotthi } = await loadKetquaDataset(
+        id,
+        { tungay, denngay, xeploai, hoten }
+      );
 
-      let data = [];
-      // let list_baithi = await LichsuThis.find({ id_cuocthi: id }).populate("questions.question");
-      let list_baithi = await LichsuThis
-        .find({ id_cuocthi: id })
-        .populate({
-          path: "questions.question",
-          select: "answer" // 🔥 chỉ lấy answer
-        })
-        .select("questions createdAt socaudung thongtinthisinh thoigianbatdau thoigiannopbai")
-        .lean();
+      if (!cuocthi) {
+        return res.status(404).json({ message: "Không tìm thấy cuộc thi" });
+      }
 
-      for (baithi of list_baithi) {
-        if (!baithi.thoigiannopbai) continue;
-        // let socaudung = 0;
-        // baithi.questions.forEach(question => {
-        //   if (question.question.answer === question.choice) {
-        //     socaudung += 1
-        //   }
-        // });
+      const total = rows.length;
+      const start = (pageNum - 1) * limitNum;
+      const data = rows.slice(start, start + limitNum).map((row) => ({
+        ...row,
+        thongtinthisinh: decryptThisinh(row.thongtinthisinh),
+      }));
 
-        let time = (new Date(baithi.thoigiannopbai)).getTime() - (new Date(baithi.thoigianbatdau)).getTime();
-
-        // let phoneNumber = decryptData(baithi.thongtinthisinh.donvi);
-        // const lastThree = phoneNumber.slice(-3);
-
-        // // Lặp lại dấu * dựa trên độ dài còn lại và cộng với 3 số cuối
-        // const maskedPhone = "*".repeat(phoneNumber.length - 3) + lastThree;
-
-        // const maskDate = "*".repeat(baithi.thongtinthisinh.birthday.length - 3) + baithi.thongtinthisinh.birthday.slice(-3);
-        // let thongtinthisinh = {
-        //   name: decryptData(baithi.thongtinthisinh.name),
-        //   donvi: maskedPhone,
-        //   phone: decryptData(baithi.thongtinthisinh.phone), // địa chi
-        //   birthday: maskDate,
-        //   hokhau: baithi.thongtinthisinh.hokhau
-        // }
-        let thongtinthisinh = {
-          name: decryptData(baithi.thongtinthisinh.name),
-          donvi: decryptData(baithi.thongtinthisinh.donvi),
-          phone: decryptData(baithi.thongtinthisinh.phone), // địa chi
-          birthday: baithi.thongtinthisinh.birthday,
-          hokhau: baithi.thongtinthisinh.hokhau
-        }
-        data.push({
-          _id: baithi._id,
-          time,
-          thongtinthisinh: thongtinthisinh,
-          socaudung: baithi.socaudung,
-          createdAt: baithi.createdAt
-        })
-      };
-      // console.log(data)
-      //sắp xếp các thí sinh theo thứ tự câu trả lời đúng từ cao xuống thấp
-      // data  = data.sort((a, b)=> b.socaudung - a.socaudung);
-      // BƯỚC 1: SẮP XẾP
-      data.sort((a, b) => {
-        // Ưu tiên 1: Số câu đúng giảm dần (Lớn trước)
-        let diemSo = b.socaudung - a.socaudung;
-        if (diemSo !== 0) return diemSo;
-
-        // Ưu tiên 2: Thời gian tăng dần (Bé trước)
-        return a.time - b.time;
+      res.status(200).json({
+        data,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        cuocthi,
+        summary: {
+          ...summary,
+          totalLuotthi,
+          totalNopbai: summary.totalNopbai,
+        },
       });
-
-      // BƯỚC 2: THÊM TRƯỜNG RANK
-      // Dùng map để tạo ra mảng mới có thêm field rank
-      let dataWithRank = data.map((item, index) => {
-        return {
-          ...item,        // Giữ nguyên các trường cũ
-          rank: index + 1 // Xếp hạng = vị trí trong mảng + 1 (vì index bắt đầu từ 0)
-        };
-        // }).slice(0,20);
-      });
-
-      dataWithRank = dataWithRank.filter(item => {
-        const date = dayjs(item.createdAt).format("YYYY-MM-DD");
-        return (new Date(date)).getTime() >= (new Date(tungay)).getTime() && (new Date(date)).getTime() <= (new Date(denngay)).getTime();
-      });
-
-      list_baithi = list_baithi.filter(item => {
-        const date = dayjs(item.createdAt).format("YYYY-MM-DD");
-        return (new Date(date)).getTime() >= (new Date(tungay)).getTime() && (new Date(date)).getTime() <= (new Date(denngay)).getTime();
-      });
-
-      res.status(200).json({ data: dataWithRank, total: list_baithi.length, cuocthi })
     } catch (error) {
-      console.log("lỗi: ", error.message);
-      res
-        .status(401)
-        .json({
-          status: "failed",
-          message: "Có lỗi xảy ra khi phía máy chủ. Liên hệ Admin",
-        });
+      console.log("lỗi getKetquathi: ", error.message);
+      res.status(500).json({
+        status: "failed",
+        message: "Có lỗi xảy ra khi phía máy chủ. Liên hệ Admin",
+      });
+    }
+  },
+
+  exportKetquaExcel: async (req, res) => {
+    const id = req.params.id;
+    const { tungay, denngay, xeploai, hoten } = req.query;
+
+    try {
+      const { cuocthi, rows } = await loadKetquaDataset(id, {
+        tungay,
+        denngay,
+        xeploai,
+        hoten,
+      });
+
+      if (!cuocthi) {
+        return res.status(404).json({ message: "Không tìm thấy cuộc thi" });
+      }
+
+      const excelRows = rows.map(toExcelRow);
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("KetQua");
+      const headers = excelRows[0]
+        ? Object.keys(excelRows[0])
+        : [
+            "xephang",
+            "hoten",
+            "ngaysinh",
+            "gioitinh",
+            "loaixe",
+            "hang_gplx",
+            "nghenghiep",
+            "donvi",
+            "phone",
+            "socaudung",
+            "xeploai",
+            "thoigianbatdau",
+            "thoigianketthuc",
+            "thoigianlambai",
+            "cautraloisai",
+          ];
+
+      worksheet.columns = headers.map((key) => ({
+        header: key,
+        key,
+        width: key === "cautraloisai" ? 80 : key === "hoten" ? 22 : 16,
+      }));
+
+      excelRows.forEach((row) => worksheet.addRow(row));
+
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.eachRow((excelRow, rowNumber) => {
+        excelRow.alignment = { vertical: "top", wrapText: true };
+        if (rowNumber === 1) return;
+        const cell = excelRow.getCell("cautraloisai");
+        const text = String(cell.value || "");
+        const lineCount = text ? text.split(/\r\n|\n/).length : 1;
+        excelRow.height = Math.min(180, Math.max(18, lineCount * 16));
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      const safeName = String(cuocthi.tencuocthi || "cuoc-thi")
+        .replace(/[^\w\-]+/g, "_")
+        .slice(0, 60);
+      const filename = `KetQuaThi_${safeName}.xlsx`;
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`
+      );
+      return res.send(buffer);
+    } catch (error) {
+      console.log("export excel lỗi: ", error.message);
+      return res.status(500).json({
+        status: "failed",
+        message: "Không xuất được file Excel",
+      });
     }
   },
 
   thongKeCauHoiSai: async (req, res) => {
     let { idCuocThi } = req.query;
-//   const explainResult = await LichsuThis.aggregate([
-//     {
-//       $match: {
-//         id_cuocthi: new mongoose.Types.ObjectId(idCuocThi),
-//       },
-//     },
-//     { $unwind: "$questions" },
-//     {
-//       $lookup: {
-//         from: "cauhois",
-//         localField: "questions.question",
-//         foreignField: "_id",
-//         as: "cauhoi_info",
-//       },
-//     },
-//     { $unwind: "$cauhoi_info" },
-//   ]).explain("executionStats");
-
-//   console.log(JSON.stringify(explainResult, null, 2));
     try {
      const result = await LichsuThis.aggregate([
   {

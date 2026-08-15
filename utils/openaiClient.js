@@ -4,7 +4,7 @@ let client = null;
 
 function getOpenAI() {
   if (!process.env.API_GPT_4) {
-    throw new Error("Thiếu API_GPT_4 trong biến môi trường");
+    throw new Error("Thiếu API_GPT trong biến môi trường");
   }
   if (!client) {
     client = new OpenAI({ apiKey: process.env.API_GPT_4 });
@@ -13,7 +13,8 @@ function getOpenAI() {
 }
 
 function getChatModel() {
-  return process.env.OPENAI_CHAT_MODEL || "gpt-4o-mini";
+  return process.env.OPENAI_CHAT_MODEL || "gpt-5.4"; 
+  // return process.env.OPENAI_CHAT_MODEL || "gpt-5-nano"; 
 }
 
 function getEmbeddingModel() {
