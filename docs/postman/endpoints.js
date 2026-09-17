@@ -342,6 +342,19 @@ module.exports = [
     auth: true,
     query: [{ key: 'idCuocThi', value: '{{cuocthiId}}' }],
   },
+  {
+    folder: 'Môn thi',
+    name: 'Thống kê câu hỏi sai (lọc kiến thức/chuyên đề/ngày)',
+    method: 'GET',
+    path: '/c08/mon-thi/thongke-cau-hoi-sai',
+    auth: true,
+    query: [
+      { key: 'monthi', value: '{{monthiId}}' },
+      { key: 'chuyende', value: '{{chuyendeId}}' },
+      { key: 'fromDate', value: '2024-01-01' },
+      { key: 'toDate', value: '2026-12-31' },
+    ],
+  },
 
   // ─── Cuộc thi ───────────────────────────────────────────────────────────────
   {
@@ -420,7 +433,7 @@ module.exports = [
     path: '/c08/mon-thi/ket-qua/cuoc-thi/{{cuocthiId}}',
     auth: true,
     role: 'xem cuộc thi',
-    description: 'Phân trang server: page (1-based), limit (max 100). Trả summary xếp loại + cautraloisai.',
+    description: 'Phân trang server: page (1-based), limit (mặc định 20, max 100). Trả data 1 trang + total + summary xếp loại.',
     query: [
       { key: 'tungay', value: '' },
       { key: 'denngay', value: '' },
@@ -437,12 +450,27 @@ module.exports = [
     path: '/c08/mon-thi/ket-qua/cuoc-thi/{{cuocthiId}}/export-excel',
     auth: true,
     role: 'xem cuộc thi',
-    description: 'Tải file .xlsx (blob). Cột gồm giới tính, loại xe, GPLX, nghề nghiệp, thời gian bắt đầu/kết thúc, nội dung câu trả lời sai.',
+    description: 'Tải file .xlsx (blob). Cột gồm tên cuộc thi, giới tính, loại xe, GPLX, nghề nghiệp, thời gian bắt đầu/kết thúc, nội dung câu trả lời sai.',
     query: [
       { key: 'tungay', value: '' },
       { key: 'denngay', value: '' },
       { key: 'xeploai', value: '' },
       { key: 'hoten', value: '' },
+    ],
+  },
+  {
+    folder: 'Cuộc thi',
+    name: 'Xuất Excel nhiều cuộc thi',
+    method: 'GET',
+    path: '/c08/mon-thi/ket-qua/export-excel',
+    auth: true,
+    role: 'xem cuộc thi',
+    description: 'Gộp kết quả nhiều cuộc thi (ids csv). Lọc tungay/denngay/xeploai. Có cột tencuocthi.',
+    query: [
+      { key: 'ids', value: '{{cuocthiId}}' },
+      { key: 'tungay', value: '' },
+      { key: 'denngay', value: '' },
+      { key: 'xeploai', value: '' },
     ],
   },
 

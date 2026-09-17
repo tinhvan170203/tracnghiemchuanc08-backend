@@ -1,5 +1,19 @@
 const https = require("https");
-const { getOpenAI, getChatModel } = require("./openaiClient");
+
+const WEB_SEARCH_TIMEOUT_MS = Number(process.env.AI_WEB_SEARCH_TIMEOUT_MS || 12000);
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  return Promise.race([
+    promise.finally(() => clearTimeout(timer)),
+    new Promise((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`${label || "operation"} timeout after ${ms}ms`)),
+        ms
+      );
+    }),
+  ]);
+}
 
 function httpsGetJson(url, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -17,19 +31,37 @@ function httpsGetJson(url, headers = {}) {
       });
     });
     req.on("error", reject);
-    req.setTimeout(15000, () => {
+    req.setTimeout(Math.min(WEB_SEARCH_TIMEOUT_MS, 15000), () => {
       req.destroy(new Error("Web search timeout"));
     });
   });
+}
+
+/** Bổ sung ngữ cảnh pháp lý VN cho Bing (nếu bật). */
+function enrichAtgtQuery(query) {
+  const q = String(query || "").trim();
+  if (!q) return q;
+  if (q.length > 420) return q.slice(0, 500);
+  const lower = q.toLowerCase();
+  const extras = [];
+  if (!/ngh[ịi]\s*đ[ịi]nh|lu[ậa]t\s|th[ôo]ng\s*t[ưu]|x[ửu]\s*ph[ạa]t/.test(lower)) {
+    extras.push("Nghị định xử phạt giao thông Việt Nam");
+  }
+  if (!/vi[ệe]t\s*nam|vn/.test(lower)) {
+    extras.push("Việt Nam");
+  }
+  if (!extras.length) return q;
+  return `${q} ${extras.join(" ")}`.slice(0, 500);
 }
 
 async function searchBing(query) {
   const key = process.env.BING_SEARCH_KEY;
   if (!key) return null;
 
+  const q = enrichAtgtQuery(query);
   const url =
     "https://api.bing.microsoft.com/v7.0/search?count=5&mkt=vi-VN&q=" +
-    encodeURIComponent(query);
+    encodeURIComponent(q);
 
   const { status, data } = await httpsGetJson(url, {
     "Ocp-Apim-Subscription-Key": key,
@@ -46,52 +78,21 @@ async function searchBing(query) {
 }
 
 /**
- * Prefer Bing if configured; otherwise try OpenAI Responses web_search tool.
+ * Chỉ Bing (nếu có key). Đã bỏ OpenAI web_search tool (phí cao).
+ * Bật web bằng AI_WEB_SEARCH_ENABLED=true + BING_SEARCH_KEY.
  */
 async function webSearch(query) {
   try {
-    const bing = await searchBing(query);
+    const bing = await withTimeout(
+      searchBing(query),
+      WEB_SEARCH_TIMEOUT_MS,
+      "Bing search"
+    );
     if (bing && bing.length) {
       return { provider: "bing", results: bing };
     }
   } catch (err) {
     console.error("Bing search error:", err.message);
-  }
-
-  try {
-    const openai = getOpenAI();
-    const response = await openai.responses.create({
-      model: getChatModel(),
-      tools: [{ type: "web_search_preview" }],
-      input: `Tìm thông tin mới nhất về: ${query}`,
-    });
-
-    const text =
-      response.output_text ||
-      (Array.isArray(response.output)
-        ? response.output
-            .map((o) =>
-              (o.content || [])
-                .map((c) => c.text || c.output_text || "")
-                .join("\n")
-            )
-            .join("\n")
-        : "");
-
-    if (text && String(text).trim()) {
-      return {
-        provider: "openai_web",
-        results: [
-          {
-            title: "Kết quả tìm kiếm web (OpenAI)",
-            url: "",
-            snippet: String(text).slice(0, 4000),
-          },
-        ],
-      };
-    }
-  } catch (err) {
-    console.error("OpenAI web search error:", err.message);
   }
 
   return { provider: "none", results: [] };
@@ -110,4 +111,5 @@ function formatWebResults(results) {
 module.exports = {
   webSearch,
   formatWebResults,
+  enrichAtgtQuery,
 };

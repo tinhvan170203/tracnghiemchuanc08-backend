@@ -14,6 +14,10 @@ const videoSchema = new Schema({
     totalView: Number,
     is_source_link_orther: Boolean,
     link_orther: String,
+    active: {
+        type: Boolean,
+        default: true
+    },
 });
 
 const Videos = mongoose.model('Videos', videoSchema);

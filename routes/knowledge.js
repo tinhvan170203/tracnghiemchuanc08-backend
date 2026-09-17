@@ -32,22 +32,29 @@ const uploadMw = (req, res, next) => {
 router.get(
   "/",
   middlewareController.verifyToken,
-  checkRole("xem cuộc thi"),
+  checkRole("xem tài liệu AI"),
   knowledgeController.list
 );
 
 router.post(
   "/upload",
   middlewareController.verifyToken,
-  checkRole("xem cuộc thi"),
+  checkRole("thêm tài liệu AI"),
   uploadMw,
   knowledgeController.upload
+);
+
+router.post(
+  "/:id/reprocess",
+  middlewareController.verifyToken,
+  checkRole("thêm tài liệu AI"),
+  knowledgeController.reprocess
 );
 
 router.delete(
   "/:id",
   middlewareController.verifyToken,
-  checkRole("xem cuộc thi"),
+  checkRole("xóa tài liệu AI"),
   knowledgeController.remove
 );
 

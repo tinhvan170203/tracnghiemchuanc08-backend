@@ -16,5 +16,6 @@ router.get('/fetch/:id', middlewareController.verifyToken, checkRole('xem câu h
 router.post('/add',  middlewareController.verifyToken,checkRole('thêm câu hỏi'), uploadImage, cauhoi.addCauhoi)
 router.delete('/delete/:id',middlewareController.verifyToken,checkRole('xóa câu hỏi'),  cauhoi.deleteCauhoi)
 router.put('/edit/:id',middlewareController.verifyToken,checkRole('sửa câu hỏi'), uploadImage, cauhoi.updatedCauhoi)
+router.put('/:id/active', middlewareController.verifyToken, checkRole('sửa câu hỏi'), cauhoi.toggleActive)
 
 module.exports = router

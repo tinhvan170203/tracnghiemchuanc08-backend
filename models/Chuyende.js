@@ -8,8 +8,14 @@ const chuyendeSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Monthis",
     },
-    link_test: String
+    link_test: String,
+    hien_thi_hoctap: {
+        type: Boolean,
+        default: false,
+    },
 },{timestamps: true});
+
+chuyendeSchema.index({ monthi: 1 });
 
 const Chuyendes = mongoose.model('Chuyendes', chuyendeSchema);
 

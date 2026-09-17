@@ -9,7 +9,11 @@ const monthiSchema = new Schema({
     },
     mota: String,
     thutu: Number,
-    link_test: String
+    link_test: String,
+    hien_thi_hoctap: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const Monthis = mongoose.model('Monthis', monthiSchema);

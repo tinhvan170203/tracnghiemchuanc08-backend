@@ -15,8 +15,14 @@ const cauhoiSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Chuyendes",
     },
-    chuyendeString: String
+    chuyendeString: String,
+    active: {
+        type: Boolean,
+        default: true
+    }
 },{timestamps: true});
+
+cauhoiSchema.index({ chuyende: 1 });
 
 const Cauhois = mongoose.model('Cauhois', cauhoiSchema);
 

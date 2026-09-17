@@ -16,24 +16,110 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-async function embedTexts(texts) {
+function formatOpenAIError(err) {
+  const status = err?.status || err?.statusCode || err?.response?.status;
+  const detail =
+    err?.error?.message ||
+    err?.response?.data?.error?.message ||
+    err?.message ||
+    "Lỗi embedding không xác định";
+  if (status) {
+    return `Embedding lỗi (${status}): ${detail}`;
+  }
+  return `Embedding lỗi: ${detail}`;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableEmbedError(err) {
+  const status = err?.status || err?.statusCode || err?.response?.status;
+  if (status === 429 || status === 500 || status === 502 || status === 503) {
+    return true;
+  }
+  const msg = String(err?.message || "").toLowerCase();
+  return msg.includes("rate limit") || msg.includes("timeout") || msg.includes("econnreset");
+}
+
+/**
+ * Embed texts with empty-input filtering and retry on 429/5xx.
+ * Returns vectors aligned 1:1 with the original `texts` array (empty slots get []).
+ */
+async function embedTexts(texts, { maxRetries = 3 } = {}) {
   const openai = getOpenAI();
   const model = getEmbeddingModel();
-  const input = texts.map((t) => String(t || "").slice(0, 8000));
-  const response = await openai.embeddings.create({
-    model,
-    input,
-  });
-  const sorted = [...response.data].sort((x, y) => x.index - y.index);
-  return {
-    model,
-    vectors: sorted.map((item) => item.embedding),
-  };
+  const list = Array.isArray(texts) ? texts : [texts];
+
+  const prepared = list.map((t) => String(t || "").slice(0, 8000).trim());
+  const nonEmptyIndexes = [];
+  const input = [];
+  for (let i = 0; i < prepared.length; i++) {
+    if (prepared[i]) {
+      nonEmptyIndexes.push(i);
+      input.push(prepared[i]);
+    }
+  }
+
+  if (!input.length) {
+    return {
+      model,
+      vectors: list.map(() => []),
+      promptTokens: 0,
+      totalTokens: 0,
+    };
+  }
+
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await openai.embeddings.create({
+        model,
+        input,
+      });
+      const sorted = [...response.data].sort((x, y) => x.index - y.index);
+      const usage = response.usage || {};
+      const vectors = list.map(() => []);
+      sorted.forEach((item, idx) => {
+        const originalIndex = nonEmptyIndexes[idx];
+        if (originalIndex != null) {
+          vectors[originalIndex] = item.embedding;
+        }
+      });
+      return {
+        model,
+        vectors,
+        promptTokens: Number(usage.prompt_tokens) || 0,
+        totalTokens: Number(usage.total_tokens) || Number(usage.prompt_tokens) || 0,
+      };
+    } catch (err) {
+      lastErr = err;
+      if (attempt < maxRetries && isRetryableEmbedError(err)) {
+        const delay = Math.min(8000, 500 * Math.pow(2, attempt));
+        await sleep(delay);
+        continue;
+      }
+      const wrapped = new Error(formatOpenAIError(err));
+      wrapped.status = err?.status || err?.statusCode;
+      throw wrapped;
+    }
+  }
+
+  throw new Error(formatOpenAIError(lastErr));
 }
 
 async function embedQuery(text) {
-  const { vectors, model } = await embedTexts([text]);
-  return { vector: vectors[0], model };
+  const trimmed = String(text || "").trim();
+  if (!trimmed) {
+    throw new Error("Embedding lỗi: câu hỏi trống");
+  }
+  const { vectors, model, promptTokens, totalTokens } = await embedTexts([trimmed]);
+  return {
+    vector: vectors[0],
+    model,
+    promptTokens,
+    totalTokens,
+  };
 }
 
 /**
@@ -57,4 +143,5 @@ module.exports = {
   embedTexts,
   embedQuery,
   rankChunksByEmbedding,
+  formatOpenAIError,
 };

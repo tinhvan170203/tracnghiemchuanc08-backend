@@ -4,6 +4,9 @@ const Schema = mongoose.Schema;
 
 const tailieuSchema = new Schema({
     text: String,
+    tieu_de: String,
+    chu_thich: String,
+    ghi_chu: String,
     file: String,
     thutu: Number
 },{timestamps: true});

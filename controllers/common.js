@@ -9,9 +9,37 @@ const { default: mongoose } = require("mongoose");
 const _ = require('lodash');
 const Tailieus = require("../models/Tailieu");
 const path = require("path");
+const {
+  buildDemographicMongoFilter,
+} = require("../utils/demographicFilters");
+const { normalizeThongkeDateRange } = require("../utils/localDay");
 
 const crypto = require('crypto');
-const { encryptData, decryptData, decryptThisinh } = require('../utils/aesPii');
+// Cần một khóa bí mật (32 ký tự) và một vector khởi tạo (16 ký tự)
+// Trong thực tế, hãy lưu cái này vào file .env, KHÔNG để trực tiếp trong code
+// const SECRET_KEY = Buffer.from('12345678901234567890123456789012'); // 32 bytes
+const IV_LENGTH = 16;
+
+// 1. Hàm mã hóa (Dùng cho Tên, Tuổi, SĐT...)
+const encryptData = (text) => {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
+  let encrypted = cipher.update(text.toString());
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  // Trả về iv + dữ liệu mã hóa để sau này còn giải mã được
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+};
+
+// 2. Hàm giải mã (Để lấy lại tên thật hiển thị lên web)
+const decryptData = (encryptedText) => {
+  const textParts = encryptedText.split(':');
+  const iv = Buffer.from(textParts.shift(), 'hex');
+  const encryptedData = Buffer.from(textParts.join(':'), 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
+  let decrypted = decipher.update(encryptedData);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+};
 
 const getExamSecretKey = (req) => {
   return (
@@ -125,7 +153,8 @@ module.exports = {
           {
             $match: {
               // Quan trọng: Phải ép kiểu về ObjectId để DB hiểu
-              chuyende: new mongoose.Types.ObjectId(idString)
+              chuyende: new mongoose.Types.ObjectId(idString),
+              active: { $ne: false }
             }
           },
           { $sample: { size: c.soluongcauhoi } }
@@ -164,7 +193,7 @@ module.exports = {
         // const options_sort = Object.keys(rest);
 
 
-        const { question, __v, image, _id, chuyende, chuyendeString, createdAt, updatedAt, ...rest } = tempQuestion;
+        const { question, __v, image, _id, chuyende, chuyendeString, createdAt, updatedAt, active, ...rest } = tempQuestion;
         const options_sort = Object.keys(rest);
 
         questionsSave.push({
@@ -297,7 +326,14 @@ module.exports = {
         if (compareQuestion && question.question.answer === choice) {
           choicedTrue += 1
         }
-        return { question: question.question._id, options_sort: question.options_sort, choice }
+        const daTraLoi = choice !== "" && choice !== false && choice != null;
+        return {
+          question: question.question._id,
+          options_sort: question.options_sort,
+          choice,
+          is_khong_tra_loi: daTraLoi ? 0 : 1,
+          is_sai: daTraLoi && question.question.answer !== choice ? 1 : 0,
+        }
       });
 
       await LichsuThis.findOneAndUpdate({ _id: id }, {
@@ -351,7 +387,7 @@ module.exports = {
         return { questionlist: i.question, options_sort: i.options_sort, choice: i.choice }
       });
 
-      let thongtinthisinh = decryptThisinh(item.thongtinthisinh);
+      let thongtinthisinh = item.thongtinthisinh;
       let thoigianbatdau = item.thoigianbatdau;
       let thoigiannopbai = item.thoigiannopbai;
       let tencuocthi = item.id_cuocthi.tencuocthi;
@@ -391,7 +427,7 @@ module.exports = {
         choicedTrue,
         allQuestion: item.questions.length,
         questionList,
-        thongtinthisinh: decryptThisinh(item.thongtinthisinh),
+        thongtinthisinh: item.thongtinthisinh,
         thoigianbatdau: item.thoigianbatdau,
         thoigiannopbai: item.thoigiannopbai,
         tencuocthi: item.id_cuocthi?.tencuocthi,
@@ -414,8 +450,17 @@ module.exports = {
       }
       // Chỉ lưu basename an toàn (multer đã sanitize)
       const link = path.basename(req.file.filename);
+      const tieuDe = (req.body.tieu_de || req.body.text || "").trim();
+      if (!tieuDe) {
+        return res.status(400).json({ status: "failed", message: "Vui lòng nhập tiêu đề tài liệu" });
+      }
+      const chuThich = (req.body.chu_thich || "").trim();
+      const ghiChu = (req.body.ghi_chu || "").trim();
       let item = new Tailieus({
-        text: req.body.text,
+        tieu_de: tieuDe,
+        chu_thich: chuThich,
+        ghi_chu: ghiChu,
+        text: tieuDe,
         file: link,
         thutu: Number(req.body.thutu)
       })
@@ -455,16 +500,26 @@ module.exports = {
   // hàm public dữ liệu cho c08:
  publicThongke: async (req, res) => {
    try {
-      let { fromDate, toDate } = req.query;
-  
-      // console.log(monthi)
-      // 2. Chuyển thành đối tượng Date
-      const date = new Date(toDate);
-      // 3. Cộng thêm 1 ngày (1 ngày = 24 * 60 * 60 * 1000 mili-giây)
-      date.setDate(date.getDate() + 1);
-      // 4. Định dạng lại thành yyyy-mm-dd
-      toDate = date.toISOString().split('T')[0];
-      // let list_baithi = await LichsuThis.find({ id_cuocthi: id }).populate("questions.question");
+      let {
+        fromDate,
+        toDate,
+        ageFrom,
+        ageTo,
+        gioitinh,
+        loaixe,
+      } = req.query;
+      const { filter: demographicFilter, parsed } =
+        buildDemographicMongoFilter({
+          ageFrom,
+          ageTo,
+          gioitinh,
+          loaixe,
+        });
+
+      const range = normalizeThongkeDateRange(fromDate, toDate);
+      fromDate = range.fromDate;
+      toDate = range.toDateExclusive;
+
       let options = {
         createdAt: {
           $lte: toDate,
@@ -472,20 +527,18 @@ module.exports = {
         }
       } 
       let cuocthis = await Cuocthis.find(options).lean();
-      // let cuocthis_ids = cuocthis.map(i => i._id.toString())
       let list_baithi = await LichsuThis
-        .find(options)
-        .select('socaudung soluongcauhoi thoigianketthuc thoigiannopbai')
+        .find({
+          ...options,
+          ...demographicFilter,
+        })
+        .select('socaudung soluongcauhoi thoigianketthuc thoigiannopbai thongtinthisinh.birthday thongtinthisinh.gioitinh thongtinthisinh.loaixe')
         .lean();
-      // console.log(list_baithi.length)
 
-      let list_nopbai = list_baithi.filter(i => i.thoigiannopbai !== 0);
+      let list_nopbai = list_baithi.filter(i => Boolean(i.thoigiannopbai));
       let total_nopbai = list_nopbai.length;
-      // 3. Phân loại chỉ với 1 vòng lặp duy nhất (Tối ưu hiệu suất)
-      const stats = list_baithi.reduce((acc, current) => {
+      const stats = list_nopbai.reduce((acc, current) => {
         const ratio = current.socaudung / current.soluongcauhoi;
-
-        if (current.thoigianketthuc !== null) acc.total_nopbai++;
 
         if (ratio < 0.5) acc.total_khongdat++;
         else if (ratio < 0.7) acc.total_trungbinh++;
@@ -500,19 +553,30 @@ module.exports = {
         total_kha: 0,
         total_gioi: 0,
         total_xuatsac: 0,
-        total_nopbai: 0
       });
       res.status(200).json({
         ...stats,
         total_cuocthi: cuocthis.length,
         total: list_baithi.length,
-        total_nopbai
+        total_nopbai,
+        filterVersion: 1,
+        appliedFilters: {
+          ageFrom: parsed.ageFrom,
+          ageTo: parsed.ageTo,
+          gioitinh: parsed.gioitinh,
+          loaixe: parsed.loaixe,
+        },
       });
   } catch (error) {
-    res.status(501).json({
+    console.log("lỗi publicThongke:", error.message);
+    const status = error.status || 500;
+    res.status(status).json({
       status: false,
-      message: "Lỗi domain"
-    })
+      message:
+        status === 400
+          ? error.message
+          : error.message || "Có lỗi xảy ra khi thống kê công khai",
+    });
   }
  },
 

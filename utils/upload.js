@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const multer = require("multer");
@@ -34,6 +35,8 @@ function createUploader({
   allowedMimes,
   maxFileSize,
 }) {
+  fs.mkdirSync(destDir, { recursive: true });
+
   const storage = multer.diskStorage({
     destination: (_req, _file, cb) => {
       cb(null, destDir);
@@ -50,10 +53,15 @@ function createUploader({
   const fileFilter = (_req, file, cb) => {
     const decoded = Buffer.from(file.originalname || "", "latin1").toString("utf8");
     const ext = path.extname(decoded).toLowerCase();
-    const mimeOk = allowedMimes.includes(file.mimetype);
+    const mime = (file.mimetype || "").toLowerCase();
     const extOk = allowedExts.includes(ext);
+    const mimeOk =
+      allowedMimes.includes(mime) ||
+      mime === "application/octet-stream" ||
+      mime === "";
 
-    if (mimeOk && extOk) {
+    // Cho phép khi đúng phần mở rộng; MIME lạ/octet-stream vẫn nhận nếu ext hợp lệ
+    if (extOk && mimeOk) {
       return cb(null, true);
     }
     return cb(
@@ -106,7 +114,7 @@ const docsUpload = createUploader({
     "image/gif",
     "image/webp",
   ],
-  maxFileSize: 20 * 1024 * 1024,
+  maxFileSize: 200 * 1024 * 1024,
 });
 
 /** Ảnh câu hỏi — max 5MB */
@@ -114,7 +122,7 @@ const imageUpload = createUploader({
   destDir: path.join(__dirname, "../upload"),
   allowedExts: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
   allowedMimes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
-  maxFileSize: 5 * 1024 * 1024,
+  maxFileSize: 50 * 1024 * 1024,
 });
 
 /** Video tuyên truyền — max 200MB */
@@ -127,7 +135,7 @@ const videoUpload = createUploader({
     "video/ogg",
     "video/quicktime",
   ],
-  maxFileSize: 200 * 1024 * 1024,
+  maxFileSize: 2000 * 1024 * 1024,
 });
 
 /** Middleware bắt lỗi multer (size/type) trả JSON rõ ràng */

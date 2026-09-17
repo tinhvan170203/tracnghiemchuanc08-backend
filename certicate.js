@@ -9,12 +9,12 @@ const {
 
 // Đăng ký font cho node-canvas (chỉ dùng để đo chữ)
 registerFont(
-  path.join(__dirname, "../backend/fonts/NotoSans-Regular.ttf"),
+  path.join(__dirname, "fonts/NotoSans-Regular.ttf"),
   { family: "Noto Sans" }
 );
 
 registerFont(
-  path.join(__dirname, "../backend/fonts/NotoSans-Bold.ttf"),
+  path.join(__dirname, "fonts/NotoSans-Bold.ttf"),
   { family: "Noto Sans Bold" }
 );
 
@@ -102,7 +102,7 @@ async function generateCertificate(data) {
 
   const backgroundPath = path.join(
     __dirname,
-    "../backend/public/c08chungnhan.png"
+    "public/c08chungnhan.png"
   );
 
   const meta = await sharp(backgroundPath).metadata();

@@ -50,9 +50,15 @@ router.get('/checkedTest/:id', common.checkedTest) // id laf lich sử thi hay b
 router.get('/preview/:id', common.previewTest) // id laf lich sử thi hay bài thi
 router.post('/:id/submitTest', common.submitTest)
 
+const fanpage = require('../controllers/fanpage');
+router.post('/fanpage-click', fanpage.logClick);
+router.get('/sumary/fanpage', fanpage.publicList);
 
-router.post('/save-file', middlewareController.verifyToken, checkRole('xem cuộc thi'), uploadDoc, common.saveFile);
-router.get('/auth/tai-lieu/fetch', middlewareController.verifyToken, checkRole('xem cuộc thi'), common.fetchFile)
+const aichat = require('../controllers/aichat');
+router.get('/sumary/ai-chat', aichat.publicList);
+
+router.post('/save-file', middlewareController.verifyToken, checkRole('thêm cẩm nang giao thông'), uploadDoc, common.saveFile);
+router.get('/auth/tai-lieu/fetch', middlewareController.verifyToken, checkRole('xem cẩm nang giao thông'), common.fetchFile)
 router.get('/tai-lieu/fetch', common.fetchFile)
-router.delete('/tai-lieu/delete',middlewareController.verifyToken, checkRole('xem cuộc thi'),  common.deleteFile)
+router.delete('/tai-lieu/delete',middlewareController.verifyToken, checkRole('xóa cẩm nang giao thông'),  common.deleteFile)
 module.exports = router

@@ -27,11 +27,26 @@ function isPrivateOrLocalIp(ip) {
   return false;
 }
 
+function isDnsLookupError(error) {
+  const code = String(error?.code || "");
+  return [
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "ESERVFAIL",
+    "ENODATA",
+    "ETIMEOUT",
+  ].includes(code);
+}
+
 /**
  * Chặn SSRF: chỉ http/https, không localhost/IP nội bộ/metadata.
- * @returns {string} URL đã chuẩn hóa (href)
+ * @param {string} rawUrl
+ * @param {{ skipDnsLookup?: boolean }} [options]
+ * @returns {Promise<string>} URL đã chuẩn hóa (href)
  */
-async function assertSafeFetchUrl(rawUrl) {
+async function assertSafeFetchUrl(rawUrl, options = {}) {
+  const { skipDnsLookup = false } = options;
+
   if (!rawUrl || typeof rawUrl !== "string") {
     throw new Error("Domain không hợp lệ");
   }
@@ -61,10 +76,22 @@ async function assertSafeFetchUrl(rawUrl) {
     if (isPrivateOrLocalIp(host)) {
       throw new Error("Không cho phép IP nội bộ / local");
     }
-  } else {
-    const { address } = await dns.lookup(host);
-    if (isPrivateOrLocalIp(address)) {
-      throw new Error("Domain resolve về địa chỉ nội bộ — bị chặn");
+  } else if (!skipDnsLookup) {
+    try {
+      const { address } = await dns.lookup(host);
+      if (isPrivateOrLocalIp(address)) {
+        throw new Error("Domain resolve về địa chỉ nội bộ — bị chặn");
+      }
+    } catch (error) {
+      if (error.message === "Domain resolve về địa chỉ nội bộ — bị chặn") {
+        throw error;
+      }
+      if (isDnsLookupError(error)) {
+        throw new Error(
+          `Domain "${host}" không tồn tại hoặc chưa phân giải DNS được`
+        );
+      }
+      throw error;
     }
   }
 
@@ -74,4 +101,5 @@ async function assertSafeFetchUrl(rawUrl) {
 module.exports = {
   assertSafeFetchUrl,
   isPrivateOrLocalIp,
+  isDnsLookupError,
 };

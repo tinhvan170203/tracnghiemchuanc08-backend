@@ -1420,7 +1420,7 @@
                 }
               ]
             },
-            "description": "Phân trang server: page (1-based), limit (max 100). Trả summary xếp loại + cautraloisai.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+            "description": "Phân trang server: page (1-based), limit (mặc định 20, max 100). Trả data 1 trang + total + summary xếp loại.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
           },
           "response": []
         },
@@ -1471,7 +1471,56 @@
                 }
               ]
             },
-            "description": "Tải file .xlsx (blob). Cột gồm giới tính, loại xe, GPLX, nghề nghiệp, thời gian bắt đầu/kết thúc, nội dung câu trả lời sai.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+            "description": "Tải file .xlsx (blob). Cột gồm tên cuộc thi, giới tính, loại xe, GPLX, nghề nghiệp, thời gian bắt đầu/kết thúc, nội dung câu trả lời sai.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
+          },
+          "response": []
+        },
+        {
+          "name": "Xuất Excel nhiều cuộc thi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/c08/mon-thi/ket-qua/export-excel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "c08",
+                "mon-thi",
+                "ket-qua",
+                "export-excel"
+              ],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "{{cuocthiId}}",
+                  "disabled": false
+                },
+                {
+                  "key": "tungay",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "denngay",
+                  "value": "",
+                  "disabled": false
+                },
+                {
+                  "key": "xeploai",
+                  "value": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Gộp kết quả nhiều cuộc thi (ids csv). Lọc tungay/denngay/xeploai. Có cột tencuocthi.\n\n**Auth:** Cookie JWT (accessToken_thitracnghiem)\n\n**Role:** `xem cuộc thi`"
           },
           "response": []
         }

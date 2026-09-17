@@ -1,0 +1,16 @@
+{
+  "watch": ["*.js", "controllers", "routes", "models", "middlewares", "utils", "c08"],
+  "ext": "js,json",
+  "ignore": [
+    "upload/**",
+    "uploads/**",
+    "public/**",
+    "knowledge_files/**",
+    "node_modules/**",
+    "*.pdf",
+    "*.docx",
+    "*.mp4",
+    "*.log"
+  ],
+  "delay": 500
+}

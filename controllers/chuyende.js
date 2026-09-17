@@ -1,50 +1,65 @@
+const mongoose = require("mongoose");
 const Cauhois = require("../models/CauHoi");
 const Chuyendes = require("../models/Chuyende");
 const Cuocthis = require("../models/Cuocthi");
-const LichsuThis = require("../models/LichsuThi");
 
-
+function isMonthiAllowed(user, monthiId) {
+  if (!monthiId) return false;
+  const idStr = String(monthiId);
+  return (user?.quantrinhomdonvi || [])
+    .map((i) => (i && (i._id || i)))
+    .filter(Boolean)
+    .some((id) => String(id) === idStr);
+}
 
 module.exports = {
   getChuyendes: async (req, res) => {
-   
-    let id = req.params.id; // id mono thi
+    let id = req.params.id; // id môn thi
     try {
+      if (!isMonthiAllowed(req.user, id)) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Tài khoản không được phân quyền kiến thức đánh giá này",
+        });
+      }
       let items = await Chuyendes.find({
-        monthi: id
+        monthi: id,
       });
-      res.status(200).json(items)
+      res.status(200).json(items);
     } catch (error) {
       console.log("lỗi: ", error.message);
-      res
-        .status(401)
-        .json({
-          status: "failed",
-          message: "Có lỗi xảy ra khi phía máy chủ. Liên hệ Admin",
-        });
+      res.status(401).json({
+        status: "failed",
+        message: "Có lỗi xảy ra khi phía máy chủ. Liên hệ Admin",
+      });
     }
   },
 
   addChuyende: async (req, res) => {
-    let id = req.params.id; //id mono thi
-    let {
-      title,
-      link_test
-    } = req.body;
-// console.log(req.body)
+    let id = req.params.id; //id môn thi
+    let { title, link_test, hien_thi_hoctap } = req.body;
     try {
+      if (!isMonthiAllowed(req.user, id)) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Tài khoản không được phân quyền kiến thức đánh giá này",
+        });
+      }
       let newItem = new Chuyendes({
-        title, monthi: id, link_test
+        title,
+        monthi: id,
+        link_test,
+        hien_thi_hoctap: !!hien_thi_hoctap,
       });
       await newItem.save();
       let items = await Chuyendes.find({
-        monthi: id
+        monthi: id,
       });
 
       res.status(200).json({
         status: "success",
         message: "Thêm mới thành công",
-        items
+        items,
       });
     } catch (error) {
       console.log("lỗi: ", error.message);
@@ -55,20 +70,25 @@ module.exports = {
     }
   },
   updatedChuyende: async (req, res) => {
-    let id = req.params.id; //id cuocthi
-    let id1 = req.params.id1; //id thí sinh
-    let {
-      title,
-      link_test
-    } = req.body;
+    let id = req.params.id; //id môn thi
+    let id1 = req.params.id1; //id chuyên đề
+    let { title, link_test, hien_thi_hoctap } = req.body;
 
     try {
+      if (!isMonthiAllowed(req.user, id)) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Tài khoản không được phân quyền kiến thức đánh giá này",
+        });
+      }
       await Chuyendes.findByIdAndUpdate(id1, {
-        title,link_test
+        title,
+        link_test,
+        hien_thi_hoctap: !!hien_thi_hoctap,
       });
 
       let items = await Chuyendes.find({
-        monthi: id
+        monthi: id,
       });
 
       res.status(200).json({ message: "update thành công", items });
@@ -83,38 +103,77 @@ module.exports = {
   },
 
   deleteChuyende: async (req, res) => {
-    let id = req.params.id;
-    let id1 = req.params.id1;
+    const id = req.params.id;
+    const id1 = req.params.id1;
     try {
-      //checked xem có lịch sử thi nào của thí sinh k nếu có thì xóa cả lịch sử thi đó
-      
-      let checked = await Cuocthis.findOne({
-        "config.chuyende": id1
+      if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(id1)) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Mã kiến thức đánh giá hoặc chuyên đề không hợp lệ",
+        });
+      }
+
+      if (!isMonthiAllowed(req.user, id)) {
+        return res.status(403).json({
+          status: "failed",
+          message: "Tài khoản không được phân quyền kiến thức đánh giá này",
+        });
+      }
+
+      const target = await Chuyendes.findOne({
+        _id: id1,
+        monthi: id,
+      })
+        .select("_id")
+        .lean();
+
+      if (!target) {
+        return res.status(404).json({
+          status: "failed",
+          message:
+            "Không tìm thấy chuyên đề trong kiến thức đánh giá đã chọn",
+        });
+      }
+
+      const [hasQuestions, hasCuocthi] = await Promise.all([
+        Cauhois.exists({ chuyende: id1 }),
+        Cuocthis.exists({ "config.chuyende": id1 }),
+      ]);
+
+      if (hasQuestions) {
+        return res.status(409).json({
+          status: "failed",
+          code: "RESOURCE_IN_USE",
+          message:
+            "Không thể xóa chuyên đề vì vẫn còn câu hỏi thuộc chuyên đề này",
+        });
+      }
+
+      if (hasCuocthi) {
+        return res.status(409).json({
+          status: "failed",
+          code: "RESOURCE_IN_USE",
+          message:
+            "Không thể xóa chuyên đề vì vẫn còn cuộc thi được cấu hình sử dụng chuyên đề này",
+        });
+      }
+
+      await Chuyendes.deleteOne({ _id: id1, monthi: id });
+
+      const items = await Chuyendes.find({
+        monthi: id,
       });
-
-      if (checked) {
-        return res.status(409).json({ message: "Lỗi không thể xóa chuyên đề do có cuộc thi đã cấu hình sử dụng câu hỏi chuyên đề này" })
-      };
-
-
-      let questions = await Cauhois.find({chuyende: id1});
-      let questions_id = questions.map(i=>i._id.toString())
-      await LichsuThis.deleteMany({ 'questions.question': {$in: questions_id} });
-
-      await Chuyendes.findByIdAndDelete(id1);
-
-      let items = await Chuyendes.find({
-        monthi: id
+      res.status(200).json({
+        status: "success",
+        message: "Xóa thành công",
+        items,
       });
-      console.log('xoas chuyeen ddeef')
-      res.status(200).json({ message: "Xóa thành công", items });
     } catch (error) {
       console.log("lỗi: ", error.message);
-      res.status(501).json({
+      res.status(500).json({
         status: "failed",
-        message:
-          "Có lỗi xảy ra khi xóa. Vui lòng liên hệ quản trị hệ thống.",
+        message: "Có lỗi xảy ra khi xóa. Vui lòng liên hệ quản trị hệ thống.",
       });
     }
-  }
+  },
 };

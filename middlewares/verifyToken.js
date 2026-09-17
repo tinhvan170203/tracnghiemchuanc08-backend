@@ -46,6 +46,28 @@ const middlewareController = {
       });
     }
   },
+
+  verifyTokenOptional: (req, res, next) => {
+    try {
+      const accessToken = req.cookies.accessToken_thitracnghiem;
+      if (!accessToken) {
+        req.userId = null;
+        return next();
+      }
+
+      jwt.verify(
+        accessToken,
+        process.env.ACCESS_TOKEN_KEY,
+        (err, user) => {
+          req.userId = err ? null : user;
+          next();
+        }
+      );
+    } catch (error) {
+      req.userId = null;
+      next();
+    }
+  },
 };
 
 module.exports = middlewareController;

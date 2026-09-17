@@ -61,7 +61,6 @@ async function ask(question) {
       .join("\n\n");
     const resp = await openai.chat.completions.create({
       model: getChatModel(),
-      temperature: 0.2,
       messages: [
         {
           role: "system",
@@ -80,7 +79,6 @@ async function ask(question) {
   const webBlock = formatWebResults(search.results);
   const resp2 = await openai.chat.completions.create({
     model: getChatModel(),
-    temperature: 0.2,
     messages: [
       {
         role: "system",

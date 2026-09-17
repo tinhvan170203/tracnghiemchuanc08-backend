@@ -1,5 +1,6 @@
 const Users = require("../models/User");
 
+/** role: string hoặc mảng string — đủ 1 quyền là qua */
 let checkRole = (role) => {
     return async(req, res, next) => {
         let userId = req.userId.userId;
@@ -11,10 +12,12 @@ let checkRole = (role) => {
         }else{
             let roles = user.roles;
             req.user = user;
-            let checkedRole = roles.includes(role);
+            const required = Array.isArray(role) ? role : [role];
+            let checkedRole = required.some((r) => roles.includes(r));
             
             if(!checkedRole){
-                res.status(401).json({message: `Tài khoản không có quyền ${role}, vui lòng đăng nhập tài khoản có chức năng này!`});
+                const label = required.join(" / ");
+                res.status(403).json({message: `Tài khoản không có quyền ${label}, vui lòng đăng nhập tài khoản có chức năng này!`});
                 return;
             };
 

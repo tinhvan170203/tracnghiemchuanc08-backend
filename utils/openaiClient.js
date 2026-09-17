@@ -13,8 +13,7 @@ function getOpenAI() {
 }
 
 function getChatModel() {
-  return process.env.OPENAI_CHAT_MODEL || "gpt-5.4"; 
-  // return process.env.OPENAI_CHAT_MODEL || "gpt-5-nano"; 
+  return process.env.OPENAI_CHAT_MODEL || "gpt-5.6-luna";
 }
 
 function getEmbeddingModel() {

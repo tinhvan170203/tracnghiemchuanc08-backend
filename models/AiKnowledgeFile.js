@@ -12,8 +12,15 @@ const aiKnowledgeFileSchema = new mongoose.Schema(
       default: "processing",
     },
     chunkCount: { type: Number, default: 0 },
+    embeddingTokens: { type: Number, default: 0 },
+    embeddingModel: { type: String, default: "" },
     errorMessage: { type: String, default: "" },
     uploadedBy: { type: String, default: "" },
+    /** Số hiệu văn bản (vd. 168/2024/NĐ-CP) */
+    documentCode: { type: String, default: "" },
+    /** Ngày hiệu lực yyyy-mm-dd nếu biết */
+    effectiveDate: { type: String, default: "" },
+    notes: { type: String, default: "" },
   },
   { timestamps: true }
 );

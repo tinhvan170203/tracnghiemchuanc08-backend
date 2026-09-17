@@ -91,6 +91,8 @@ app.use(cors({
     "http://127.0.0.1:5174",
     "https://tuyentruyenphapluatpc08hungyen.com",
     "https://antoangiaothong.conganhungyen.com",
+    "https://antoangiaothonghungyen.com",
+    "https://www.antoangiaothonghungyen.com",
   ],
   credentials: true,
 }));
@@ -98,8 +100,12 @@ app.use(cors({
 
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '5mb' }));
-// Data sanitization against XSS (Đặt sau express.json)
-app.use(xss());
+// Data sanitization against XSS — bỏ qua multipart (upload file)
+app.use((req, res, next) => {
+  const ctype = req.headers['content-type'] || '';
+  if (ctype.includes('multipart/form-data')) return next();
+  return xss()(req, res, next);
+});
 
 const authRoute = require('./routes/auth');
 const monthiRoute = require('./routes/monthi');
@@ -126,7 +132,16 @@ const generateCertificate = require('./certicate.js');
 const middlewareController = require('./middlewares/verifyToken.js');
 const checkRole = require('./middlewares/checkRole.js');
 
-const { decryptData: decryptPii } = require('./utils/aesPii');
+const decryptPii = (encryptedText) => {
+  if (!encryptedText || !String(encryptedText).includes(':')) return encryptedText || '';
+  const textParts = String(encryptedText).split(':');
+  const iv = Buffer.from(textParts.shift(), 'hex');
+  const encryptedData = Buffer.from(textParts.join(':'), 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', process.env.SECRET_KEY, iv);
+  let decrypted = decipher.update(encryptedData);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+};
 
 const basePath = '';
 
@@ -234,21 +249,32 @@ app.get("/api/public/:filename", (req, res) => {
 });
 
 
-const c08controller = require("../backend/c08/c08.js")
-const commoncontroller = require("../backend/controllers/common.js")
+const c08controller = require("./c08/c08.js")
+const commoncontroller = require("./controllers/common.js")
 app.get('/api/public/sumary/toan-quoc',  commoncontroller.publicThongke)
+const fanpageController = require('./controllers/fanpage')
+app.get('/api/public/sumary/fanpage', fanpageController.publicList)
+const aichatController = require('./controllers/aichat')
+app.get('/api/public/sumary/ai-chat', aichatController.publicList)
 // chuc nang rieng cua c08
 app.get('/api/dia-phuong/list', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.getDiaphuongs);
 app.post('/api/dia-phuong', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.addDiaphuong);
 app.put('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.updatedDiaphuong);
 app.delete('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.deleteDiaphuong);
 
-
-//hàm này thì để nguyên k sửa c08 vì link về mãy chủ c08
 app.get('/api/toan-quoc', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.sumaryKetquas)
+app.get('/api/toan-quoc/fanpage', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.fetchFanpageClicksToanquoc)
+app.get('/api/toan-quoc/ai-chat', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.fetchAiChatToanquoc)
 
 const PORT = process.env.PORT || 4000;
-connectDB();
+const { startExportWorker } = require("./services/exportJobWorker");
+
+connectDB().then(() => {
+  startExportWorker();
+}).catch((err) => {
+  console.error("connectDB failed:", err.message);
+  startExportWorker();
+});
 
 app.listen(PORT, () => {
   console.log(`Server đang chạy trên cổng: ${PORT}`);

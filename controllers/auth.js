@@ -43,7 +43,6 @@ module.exports = {
       }
 
       const isMatch = await comparePassword(req.body.matkhau, user.matkhau);
-      // console.log(isMatch)
       if (!isMatch) {
         return res.status(501).json({ status: "failed", message: "Mật khẩu không chính xác" });
       }
@@ -280,5 +279,41 @@ module.exports = {
       console.log("lỗi: ", error.message);
       res.status(501).json({ status: "failed", message: "Lỗi server, Vui lòng liên hệ quản trị hệ thống" });
     }
-  }
+  },
+
+  /** Admin reset mật khẩu người dùng (không cần mật khẩu cũ) */
+  resetPasswordByAdmin: async (req, res) => {
+    const id = req.params.id;
+    const { matkhau_moi } = req.body;
+    try {
+      if (!matkhau_moi || String(matkhau_moi).trim().length < 6) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Mật khẩu mới phải có ít nhất 6 ký tự",
+        });
+      }
+
+      const user = await Users.findById(id);
+      if (!user) {
+        return res.status(404).json({
+          status: "failed",
+          message: "Không tìm thấy tài khoản",
+        });
+      }
+
+      user.matkhau = await hashPassword(String(matkhau_moi).trim());
+      await user.save();
+
+      res.status(200).json({
+        status: "success",
+        message: `Đã reset mật khẩu cho tài khoản "${user.tentaikhoan}" thành công`,
+      });
+    } catch (error) {
+      console.log("lỗi: ", error.message);
+      res.status(501).json({
+        status: "failed",
+        message: "Có lỗi xảy ra khi reset mật khẩu",
+      });
+    }
+  },
 };
