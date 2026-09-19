@@ -257,14 +257,14 @@ app.get('/api/public/sumary/fanpage', fanpageController.publicList)
 const aichatController = require('./controllers/aichat')
 app.get('/api/public/sumary/ai-chat', aichatController.publicList)
 // chuc nang rieng cua c08
-app.get('/api/dia-phuong/list', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.getDiaphuongs);
-app.post('/api/dia-phuong', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.addDiaphuong);
-app.put('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.updatedDiaphuong);
-app.delete('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.deleteDiaphuong);
+app.get('/api/dia-phuong/list', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.getDiaphuongs);
+app.post('/api/dia-phuong', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.addDiaphuong);
+app.put('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.updatedDiaphuong);
+app.delete('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.deleteDiaphuong);
 
-app.get('/api/toan-quoc', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.sumaryKetquas)
-app.get('/api/toan-quoc/fanpage', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.fetchFanpageClicksToanquoc)
-app.get('/api/toan-quoc/ai-chat', middlewareController.verifyToken, checkRole('xem cuộc thi'), c08controller.fetchAiChatToanquoc)
+app.get('/api/toan-quoc', middlewareController.verifyToken, checkRole('xem thống kê toàn quốc'), c08controller.sumaryKetquas)
+app.get('/api/toan-quoc/fanpage', middlewareController.verifyToken, checkRole('xem fanpage toàn quốc'), c08controller.fetchFanpageClicksToanquoc)
+app.get('/api/toan-quoc/ai-chat', middlewareController.verifyToken, checkRole('xem hỏi đáp AI toàn quốc'), c08controller.fetchAiChatToanquoc)
 
 const PORT = process.env.PORT || 4000;
 const { startExportWorker } = require("./services/exportJobWorker");

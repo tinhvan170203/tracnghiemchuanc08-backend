@@ -21,7 +21,7 @@ const loginLimiter = rateLimit({
 router.post('/login', loginLimiter, auth.login )
 router.post('/change-pass', auth.changePassword )
 router.get('/me', middlewareController.verifyToken, auth.getMe)
-router.get('/logout', middlewareController.verifyToken, auth.logout)
+router.get('/logout', auth.logout)
 router.get('/users/fetch', middlewareController.verifyToken, checkRole('xem tài khoản'), auth.getUserList)
 router.get('/requestRefreshToken', auth.requestRefreshToken)
 router.post('/users/add', middlewareController.verifyToken,checkRole('thêm tài khoản'), auth.addUser)

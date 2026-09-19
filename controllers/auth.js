@@ -20,8 +20,16 @@ const cookieOptions = (maxAge) => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
+  path: "/",
   maxAge,
 });
+
+const clearAuthCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+};
 
 // Băm mật khẩu
 const hashPassword = async (password) => {
@@ -107,20 +115,15 @@ module.exports = {
         await RefreshTokens.findOneAndDelete({ refreshToken: refreshTokenCookie });
       }
 
-      res.clearCookie("accessToken_thitracnghiem", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-      });
-      res.clearCookie("refreshToken_thitracnghiem", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-      });
+      res.clearCookie("accessToken_thitracnghiem", clearAuthCookieOptions);
+      res.clearCookie("refreshToken_thitracnghiem", clearAuthCookieOptions);
       res.status(200).json({ status: "success", message: "Đăng xuất thành công" });
     } catch (error) {
       console.log("lỗi: ", error.message);
-      res.status(501).json({ status: "failed", message: "Lỗi server hệ thống" });
+      // Vẫn cố clear cookie khi lỗi DB
+      res.clearCookie("accessToken_thitracnghiem", clearAuthCookieOptions);
+      res.clearCookie("refreshToken_thitracnghiem", clearAuthCookieOptions);
+      res.status(200).json({ status: "success", message: "Đăng xuất thành công" });
     }
   },
   getUserList: async (req, res) => {
