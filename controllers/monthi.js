@@ -235,7 +235,7 @@ async function loadKetquaRows(id, query, { includeWrongAnswers = false } = {}) {
     );
   } else {
     q = q.select(
-      "createdAt socaudung thongtinthisinh thoigianbatdau thoigiannopbai"
+      "createdAt socaudung thongtinthisinh thoigianbatdau thoigiannopbai camKet.signedAt"
     );
   }
 
@@ -275,6 +275,7 @@ async function loadKetquaRows(id, query, { includeWrongAnswers = false } = {}) {
         },
         socaudung: baithi.socaudung,
         createdAt: baithi.createdAt,
+        camKetSigned: !!baithi.camKet?.signedAt,
         cautraloisai: includeWrongAnswers
           ? buildCautraloisai(baithi.questions || [])
           : undefined,
@@ -651,6 +652,7 @@ module.exports = {
       config,
       tongsonguoithamgia,
       canbothamgiatuyentruyen,
+      camKet,
     } = req.body;
 
     let tencuocthiParam = req.body.queryParams.tencuocthi;
@@ -661,6 +663,17 @@ module.exports = {
           status: "failed",
           message: "Tài khoản không được phân quyền kiến thức đánh giá này",
         });
+      }
+
+      const { normalizeSnapshot } = require("./camKet");
+      let camKetDoc = { enabled: false, mode: "custom", templateId: null, snapshot: normalizeSnapshot({}) };
+      if (camKet && typeof camKet === "object") {
+        camKetDoc = {
+          enabled: !!camKet.enabled,
+          mode: camKet.mode === "template" ? "template" : "custom",
+          templateId: camKet.templateId || null,
+          snapshot: normalizeSnapshot(camKet.snapshot),
+        };
       }
 
       let newItem = new Cuocthis({
@@ -675,6 +688,7 @@ module.exports = {
         tongsonguoithamgia: Math.max(0, Number(tongsonguoithamgia) || 0),
         canbothamgiatuyentruyen: canbothamgiatuyentruyen,
         createdBy: req.user._id,
+        camKet: camKetDoc,
       });
       await newItem.save();
 
@@ -755,7 +769,7 @@ module.exports = {
   },
 
   updateOptionCuocthi: async (req, res) => {
-    let { tencuocthi, soluongcauhoi, thoigianthi, ngaytochucthi, config, tongsonguoithamgia, canbothamgiatuyentruyen } = req.body;
+    let { tencuocthi, soluongcauhoi, thoigianthi, ngaytochucthi, config, tongsonguoithamgia, canbothamgiatuyentruyen, camKet } = req.body;
     let tencuocthiParam = req.body.queryParams.tencuocthi;
     const creatorIds = req.body.queryParams?.creatorIds || req.query.creatorIds;
     let id1 = req.params.id1; //id1 cuộc thi
@@ -764,13 +778,24 @@ module.exports = {
       const existing = await Cuocthis.findById(id1);
       assertCanAccessCuocthi(req.user, existing);
 
-      await Cuocthis.findByIdAndUpdate(id1, {
+      const update = {
         tencuocthi,
         soluongcauhoi, thoigianthi, ngaytochucthi,
         config,
         tongsonguoithamgia: Math.max(0, Number(tongsonguoithamgia) || 0),
         canbothamgiatuyentruyen: canbothamgiatuyentruyen
-      });
+      };
+      if (camKet && typeof camKet === "object") {
+        const { normalizeSnapshot } = require("./camKet");
+        update.camKet = {
+          enabled: !!camKet.enabled,
+          mode: camKet.mode === "template" ? "template" : "custom",
+          templateId: camKet.templateId || null,
+          snapshot: normalizeSnapshot(camKet.snapshot),
+        };
+      }
+
+      await Cuocthis.findByIdAndUpdate(id1, update);
 
       let items = await findCuocthisScoped(req.user, {
         monthiId: id,
@@ -1202,11 +1227,11 @@ module.exports = {
     $addFields: {
       ti_le_sai: {
         $cond: [
-          { $eq: ["$so_luot_da_tra_loi", 0] },
+          { $eq: ["$tong_luot_lam", 0] },
           0,
           {
             $round: [
-              { $multiply: [{ $divide: ["$so_luot_sai", "$so_luot_da_tra_loi"] }, 100] },
+              { $multiply: [{ $divide: ["$so_luot_sai", "$tong_luot_lam"] }, 100] },
               2,
             ],
           },
@@ -1367,13 +1392,13 @@ module.exports = {
           $set: {
             ti_le_sai: {
               $cond: [
-                { $eq: ["$so_luot_da_tra_loi", 0] },
+                { $eq: ["$tong_luot_lam", 0] },
                 0,
                 {
                   $round: [
                     {
                       $multiply: [
-                        { $divide: ["$so_luot_sai", "$so_luot_da_tra_loi"] },
+                        { $divide: ["$so_luot_sai", "$tong_luot_lam"] },
                         100,
                       ],
                     },
@@ -1435,6 +1460,273 @@ module.exports = {
       return res.status(200).json({ items, totalAttempts });
     } catch (error) {
       console.log("lỗi: ", error.message);
+      res.status(401).json({
+        status: "failed",
+        message: "Có lỗi xảy ra khi phía máy chủ. Liên hệ Admin",
+      });
+    }
+  },
+
+  /**
+   * Top 15 câu hay sai theo từng cuộc (phục vụ xuất Excel multi-sheet).
+   * Cùng filter với thongKeCauHoiSaiTongHop. Không giới hạn số cuộc.
+   */
+  thongKeCauHoiSaiTheoCuocthi: async (req, res) => {
+    const input =
+      req.body && Object.keys(req.body).length ? req.body : req.query;
+    const { monthi, chuyende, fromDate, toDate, creatorIds, ids } = input;
+    try {
+      let accessibleIds;
+      if (ids != null && ids !== "") {
+        const idList = Array.isArray(ids) ? ids : String(ids).split(",");
+        accessibleIds = await filterAccessibleCuocthiIds(
+          req.user,
+          idList,
+          Cuocthis
+        );
+      } else {
+        const cuocthiQuery = buildCuocthiAccessFilter(req.user, {
+          monthiId: monthi,
+          creatorIds,
+          chuyendeId: undefined,
+        });
+        accessibleIds = await Cuocthis.find(cuocthiQuery).distinct("_id");
+      }
+      if (accessibleIds.length === 0) {
+        return res.status(200).json({ sheets: [], totalCuocthi: 0 });
+      }
+
+      // Cùng mốc ngày với xuất Excel kết quả để hai file khớp tập bài thi
+      const dateRange = buildCreatedAtFilter(fromDate, toDate);
+      const baseMatch = { thoigiannopbai: { $gt: 0 } };
+      if (dateRange) baseMatch.createdAt = dateRange;
+
+      // Chỉ cuộc còn bài nộp trong khoảng ngày → bỏ lookup tên + aggregate cho cuộc trống
+      const activeIds = await LichsuThis.distinct("id_cuocthi", {
+        ...baseMatch,
+        id_cuocthi: { $in: accessibleIds },
+      });
+      if (activeIds.length === 0) {
+        return res.status(200).json({ sheets: [], totalCuocthi: 0 });
+      }
+
+      const cuocthiDocs = await Cuocthis.find({ _id: { $in: activeIds } })
+        .select("tencuocthi")
+        .lean();
+      const nameMap = new Map(
+        cuocthiDocs.map((c) => [String(c._id), c.tencuocthi || "Cuoc thi"])
+      );
+
+      const matchLichsu = {
+        ...baseMatch,
+        id_cuocthi: { $in: activeIds },
+      };
+
+      const pipeline = [
+        { $match: matchLichsu },
+        {
+          $project: {
+            id_cuocthi: 1,
+            questions: { question: 1, choice: 1 },
+          },
+        },
+        { $unwind: "$questions" },
+        {
+          $group: {
+            _id: {
+              cuocthi: "$id_cuocthi",
+              q: "$questions.question",
+              choice: { $ifNull: ["$questions.choice", false] },
+            },
+            n: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: { cuocthi: "$_id.cuocthi", q: "$_id.q" },
+            tong_luot_lam: { $sum: "$n" },
+            buckets: { $push: { choice: "$_id.choice", n: "$n" } },
+          },
+        },
+        {
+          $lookup: {
+            from: "cauhois",
+            let: { qid: "$_id.q" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$qid"] } } },
+              {
+                $project: {
+                  answer: 1,
+                  chuyende: 1,
+                  question: 1,
+                  chuyendeString: 1,
+                  option_a: 1,
+                  option_b: 1,
+                  option_c: 1,
+                  option_d: 1,
+                  option_e: 1,
+                },
+              },
+            ],
+            as: "meta",
+          },
+        },
+        { $set: { meta: { $first: "$meta" } } },
+        { $match: { meta: { $ne: null } } },
+      ];
+
+      if (chuyende) {
+        pipeline.push({
+          $match: {
+            "meta.chuyende": new mongoose.Types.ObjectId(chuyende),
+          },
+        });
+      }
+
+      pipeline.push(
+        {
+          $set: {
+            so_luot_khong_tra_loi: {
+              $reduce: {
+                input: "$buckets",
+                initialValue: 0,
+                in: {
+                  $add: [
+                    "$$value",
+                    {
+                      $cond: [
+                        { $in: ["$$this.choice", [false, null, ""]] },
+                        "$$this.n",
+                        0,
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            so_luot_sai: {
+              $reduce: {
+                input: "$buckets",
+                initialValue: 0,
+                in: {
+                  $add: [
+                    "$$value",
+                    {
+                      $cond: [
+                        {
+                          $and: [
+                            {
+                              $not: {
+                                $in: ["$$this.choice", [false, null, ""]],
+                              },
+                            },
+                            { $ne: ["$$this.choice", "$meta.answer"] },
+                          ],
+                        },
+                        "$$this.n",
+                        0,
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        {
+          $set: {
+            so_luot_da_tra_loi: {
+              $subtract: ["$tong_luot_lam", "$so_luot_khong_tra_loi"],
+            },
+          },
+        },
+        {
+          $set: {
+            ti_le_sai: {
+              $cond: [
+                { $eq: ["$tong_luot_lam", 0] },
+                0,
+                {
+                  $round: [
+                    {
+                      $multiply: [
+                        { $divide: ["$so_luot_sai", "$tong_luot_lam"] },
+                        100,
+                      ],
+                    },
+                    2,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            _id: "$_id.q",
+            cuocthiId: "$_id.cuocthi",
+            question: "$meta.question",
+            chuyendeString: "$meta.chuyendeString",
+            option_a: "$meta.option_a",
+            option_b: "$meta.option_b",
+            option_c: "$meta.option_c",
+            option_d: "$meta.option_d",
+            option_e: "$meta.option_e",
+            answer: "$meta.answer",
+            tong_luot_lam: 1,
+            so_luot_sai: 1,
+            so_luot_khong_tra_loi: 1,
+            so_luot_da_tra_loi: 1,
+            ti_le_sai: 1,
+          },
+        },
+        // Top 15 / cuộc ngay trong pipeline → giảm payload về FE
+        {
+          $setWindowFields: {
+            partitionBy: "$cuocthiId",
+            sortBy: { so_luot_sai: -1 },
+            output: { _rank: { $documentNumber: {} } },
+          },
+        },
+        { $match: { _rank: { $lte: 15 } } },
+        { $unset: "_rank" }
+      );
+
+      const rows = await LichsuThis.aggregate(pipeline).allowDiskUse(true);
+
+      const byCuocthi = new Map();
+      for (const row of rows) {
+        const cid = String(row.cuocthiId);
+        if (!byCuocthi.has(cid)) byCuocthi.set(cid, []);
+        byCuocthi.get(cid).push(row);
+      }
+
+      const sortedIds = [...byCuocthi.keys()].sort((a, b) =>
+        String(nameMap.get(a) || a).localeCompare(
+          String(nameMap.get(b) || b),
+          "vi"
+        )
+      );
+
+      const sheets = sortedIds.map((cid) => ({
+        cuocthiId: cid,
+        tenCuocthi: nameMap.get(cid) || "Cuoc thi",
+        items: byCuocthi
+          .get(cid)
+          .slice()
+          .sort(
+            (a, b) =>
+              (b.so_luot_sai || 0) - (a.so_luot_sai || 0) ||
+              (b.ti_le_sai || 0) - (a.ti_le_sai || 0)
+          ),
+      }));
+
+      return res.status(200).json({
+        sheets,
+        totalCuocthi: sheets.length,
+      });
+    } catch (error) {
+      console.log("thongKeCauHoiSaiTheoCuocthi:", error.message);
       res.status(401).json({
         status: "failed",
         message: "Có lỗi xảy ra khi phía máy chủ. Liên hệ Admin",
@@ -1643,6 +1935,200 @@ module.exports = {
       res.status(500).json({
         status: "failed",
         message: "Có lỗi xảy ra khi phía máy chủ. Liên hệ Admin",
+      });
+    }
+  },
+
+  /**
+   * Public Top 15 câu hay sai toàn máy (cho C08 gọi từ địa phương).
+   * Query: fromDate, toDate. Chỉ bài đã nộp.
+   */
+  publicThongKeCauHoiSai: async (req, res) => {
+    let { fromDate, toDate } = req.query;
+    try {
+      if (!fromDate) fromDate = "1990-01-01";
+      if (!toDate) toDate = "3000-01-01";
+      const end = new Date(toDate);
+      end.setDate(end.getDate() + 1);
+      const toDateExclusive = end.toISOString().split("T")[0];
+
+      const matchLichsu = {
+        thoigiannopbai: { $gt: 0 },
+        createdAt: {
+          $gte: new Date(fromDate),
+          $lt: new Date(toDateExclusive),
+        },
+      };
+
+      const pipeline = [
+        { $match: matchLichsu },
+        { $project: { _id: 0, questions: { question: 1, choice: 1 } } },
+        { $unwind: "$questions" },
+        {
+          $group: {
+            _id: {
+              q: "$questions.question",
+              choice: { $ifNull: ["$questions.choice", false] },
+            },
+            n: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.q",
+            tong_luot_lam: { $sum: "$n" },
+            buckets: { $push: { choice: "$_id.choice", n: "$n" } },
+          },
+        },
+        {
+          $lookup: {
+            from: "cauhois",
+            let: { qid: "$_id" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$qid"] } } },
+              { $project: { answer: 1 } },
+            ],
+            as: "meta",
+          },
+        },
+        { $set: { meta: { $first: "$meta" } } },
+        { $match: { meta: { $ne: null } } },
+        {
+          $set: {
+            so_luot_khong_tra_loi: {
+              $reduce: {
+                input: "$buckets",
+                initialValue: 0,
+                in: {
+                  $add: [
+                    "$$value",
+                    {
+                      $cond: [
+                        { $in: ["$$this.choice", [false, null, ""]] },
+                        "$$this.n",
+                        0,
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            so_luot_sai: {
+              $reduce: {
+                input: "$buckets",
+                initialValue: 0,
+                in: {
+                  $add: [
+                    "$$value",
+                    {
+                      $cond: [
+                        {
+                          $and: [
+                            {
+                              $not: {
+                                $in: ["$$this.choice", [false, null, ""]],
+                              },
+                            },
+                            { $ne: ["$$this.choice", "$meta.answer"] },
+                          ],
+                        },
+                        "$$this.n",
+                        0,
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        {
+          $set: {
+            so_luot_da_tra_loi: {
+              $subtract: ["$tong_luot_lam", "$so_luot_khong_tra_loi"],
+            },
+          },
+        },
+        {
+          $set: {
+            ti_le_sai: {
+              $cond: [
+                { $eq: ["$tong_luot_lam", 0] },
+                0,
+                {
+                  $round: [
+                    {
+                      $multiply: [
+                        { $divide: ["$so_luot_sai", "$tong_luot_lam"] },
+                        100,
+                      ],
+                    },
+                    2,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        { $sort: { so_luot_sai: -1, ti_le_sai: -1 } },
+        { $limit: 15 },
+        {
+          $lookup: {
+            from: "cauhois",
+            let: { qid: "$_id" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$qid"] } } },
+              {
+                $project: {
+                  question: 1,
+                  chuyendeString: 1,
+                  option_a: 1,
+                  option_b: 1,
+                  option_c: 1,
+                  option_d: 1,
+                  option_e: 1,
+                  answer: 1,
+                },
+              },
+            ],
+            as: "cauhoi",
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: {
+              $mergeObjects: [
+                { $ifNull: [{ $first: "$cauhoi" }, {}] },
+                {
+                  _id: "$_id",
+                  tong_luot_lam: "$tong_luot_lam",
+                  so_luot_sai: "$so_luot_sai",
+                  so_luot_khong_tra_loi: "$so_luot_khong_tra_loi",
+                  so_luot_da_tra_loi: "$so_luot_da_tra_loi",
+                  ti_le_sai: "$ti_le_sai",
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const [totalAttempts, items] = await Promise.all([
+        LichsuThis.countDocuments(matchLichsu),
+        LichsuThis.aggregate(pipeline).allowDiskUse(true),
+      ]);
+
+      return res.status(200).json({
+        items,
+        totalAttempts,
+        fromDate,
+        toDate,
+      });
+    } catch (error) {
+      console.log("publicThongKeCauHoiSai:", error.message);
+      res.status(500).json({
+        status: "failed",
+        message: "Có lỗi xảy ra khi thống kê câu hỏi hay sai",
       });
     }
   },

@@ -36,6 +36,14 @@ router.put('/:id/cuoc-thi/:id1/update-option', middlewareController.verifyToken,
 router.put('/:id/cuoc-thi/:id1/assign-owner', middlewareController.verifyToken, checkRole('quản trị tất cả cuộc đánh giá'), monthi.assignCuocthiOwner)
 router.delete('/:id/cuoc-thi/:id1/delete',middlewareController.verifyToken,checkRole('xóa cuộc thi'),  monthi.deleteCuocthi)
 
+const camKet = require('../controllers/camKet');
+router.get('/cam-ket/templates', middlewareController.verifyToken, checkRole('xem cuộc thi'), camKet.listTemplates)
+router.get('/cam-ket/templates/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), camKet.getTemplate)
+router.post('/cam-ket/templates', middlewareController.verifyToken, checkRole('thêm cuộc thi'), camKet.createTemplate)
+router.put('/cam-ket/templates/:id', middlewareController.verifyToken, checkRole('sửa cuộc thi'), camKet.updateTemplate)
+router.delete('/cam-ket/templates/:id', middlewareController.verifyToken, checkRole('xóa cuộc thi'), camKet.deleteTemplate)
+router.get('/cam-ket/baithi/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), camKet.getCamKetAdmin)
+
 const exportJob = require('../controllers/exportJob');
 router.post('/ket-qua/export-jobs', middlewareController.verifyToken, checkRole('xem cuộc thi'), exportJob.createJob)
 router.get('/ket-qua/export-jobs/:id', middlewareController.verifyToken, checkRole('xem cuộc thi'), exportJob.getJob)
@@ -55,5 +63,7 @@ router.delete('/:id/chuyen-de/:id1/delete', middlewareController.verifyToken, ch
 router.get('/thongke', middlewareController.verifyToken, checkRole('xem thống kê hệ thống'), monthi.thongke);
 router.get('/top-cau-hoi-sai', middlewareController.verifyToken, checkRole('xem câu hỏi hay sai'), monthi.thongKeCauHoiSai);
 router.get('/thongke-cau-hoi-sai', middlewareController.verifyToken, checkRole('xem câu hỏi hay sai'), monthi.thongKeCauHoiSaiTongHop);
+router.get('/thongke-cau-hoi-sai/theo-cuocthi', middlewareController.verifyToken, checkRole('xem câu hỏi hay sai'), monthi.thongKeCauHoiSaiTheoCuocthi);
+router.post('/thongke-cau-hoi-sai/theo-cuocthi', middlewareController.verifyToken, checkRole(['xem câu hỏi hay sai', 'xem cuộc thi']), monthi.thongKeCauHoiSaiTheoCuocthi);
 router.get('/ok', monthi.updateAnswers)
 module.exports = router

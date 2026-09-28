@@ -78,6 +78,7 @@ module.exports = {
         status: "success",
         _id: user._id,
         tentaikhoan: user.tentaikhoan,
+        tenHienThi: user.tenHienThi || "",
         roles: user.roles,
       });
     } catch (error) {
@@ -101,6 +102,7 @@ module.exports = {
         status: "success",
         _id: user._id,
         tentaikhoan: user.tentaikhoan,
+        tenHienThi: user.tenHienThi || "",
         roles: user.roles,
       });
     } catch (error) {
@@ -142,13 +144,14 @@ module.exports = {
     }
   },
   addUser: async (req, res) => {
-    let { tentaikhoan, matkhau, thutu } = req.body;
+    let { tentaikhoan, matkhau, thutu, tenHienThi } = req.body;
     let perPage = 5;
     let page = 1;
     try {
       matkhau = await hashPassword(matkhau);
       let newItem = new Users({
         tentaikhoan,
+        tenHienThi: String(tenHienThi || "").trim(),
         matkhau,
         thutu: Number(thutu),
         roles: [],
@@ -167,19 +170,19 @@ module.exports = {
   },
   editUser: async (req, res) => {
     let id = req.params.id;
-    const { roles, page } = req.body;
-    // const {roles, page} = req.body;
+    const { roles, page, tenHienThi, thutu } = req.body;
     let perPage = 5;
     try {
-      await Users.findByIdAndUpdate(id, {
-        roles
-      });
+      const $set = {};
+      if (roles !== undefined) $set.roles = roles;
+      if (tenHienThi !== undefined) $set.tenHienThi = String(tenHienThi || "").trim();
+      if (thutu !== undefined) $set.thutu = Number(thutu);
+      await Users.findByIdAndUpdate(id, { $set });
       let users = await Users.find().sort({ thutu: 1 }).skip((page - 1) * perPage).limit(perPage);
-      console.log('suawr usser')
-      res.status(200).json({ status: "success", users, message: "Cập nhật phân quyền tài khoản người dùng thành công" })
+      res.status(200).json({ status: "success", users, message: "Cập nhật tài khoản thành công" })
     } catch (error) {
       console.log("lỗi: ", error.message);
-      res.status(501).json({ status: "failed", message: "Có lỗi xảy ra khi cập nhật phân quyền người dùng" });
+      res.status(501).json({ status: "failed", message: "Có lỗi xảy ra khi cập nhật tài khoản" });
     }
   },
   deleteUser: async (req, res) => {

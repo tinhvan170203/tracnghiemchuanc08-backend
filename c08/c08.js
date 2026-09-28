@@ -403,5 +403,69 @@ module.exports = {
     }
   },
 
+  /** Top 15 câu hay sai từng máy trạm địa phương → C08 gom + xuất Excel. */
+  fetchCauHoiSaiToanquoc: async (req, res) => {
+    try {
+      const { fromDate, toDate, list } = req.query;
+      if (!fromDate || !toDate) {
+        return res.status(400).json({
+          message: "Thiếu fromDate hoặc toDate",
+        });
+      }
+
+      const rawIds = Array.isArray(list) ? list : list ? [list] : [];
+      const ids = rawIds
+        .map((id) => String(id).trim())
+        .filter((id) => mongoose.isValidObjectId(id));
+
+      if (ids.length === 0) {
+        return res.status(200).json({ listSuccess: [], listError: [] });
+      }
+
+      const dsDiaPhuong = await Diaphuongs.find({ _id: { $in: ids } }).lean();
+
+      const results = await Promise.all(
+        dsDiaPhuong.map(async (item) => {
+          try {
+            const apiBase = await resolveDiaphuongApiBaseForSave(item.domain);
+            const url = buildDiaphuongPublicUrl(
+              apiBase,
+              "/public/sumary/cau-hoi-sai",
+              { fromDate, toDate }
+            );
+            // Aggregate nặng — timeout dài hơn thống kê kết quả
+            const data = await fetchRemoteJson(url, 120000);
+            const items = Array.isArray(data?.items) ? data.items : [];
+            return {
+              success: true,
+              text: item.text,
+              domain: item.domain,
+              items,
+              totalAttempts: data?.totalAttempts ?? null,
+            };
+          } catch (error) {
+            return {
+              success: false,
+              text: item.text,
+              domain: item.domain,
+              error: error.message,
+            };
+          }
+        })
+      );
+
+      const listSuccess = results
+        .filter((x) => x.success)
+        .sort((a, b) =>
+          String(a.text || "").localeCompare(String(b.text || ""), "vi")
+        );
+      const listError = results.filter((x) => !x.success);
+
+      return res.status(200).json({ listSuccess, listError });
+    } catch (error) {
+      console.log("fetchCauHoiSaiToanquoc:", error.message);
+      return res.status(error.status || 500).json({ message: error.message });
+    }
+  },
 
 };

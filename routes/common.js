@@ -50,6 +50,10 @@ router.get('/checkedTest/:id', common.checkedTest) // id laf lich sử thi hay b
 router.get('/preview/:id', common.previewTest) // id laf lich sử thi hay bài thi
 router.post('/:id/submitTest', common.submitTest)
 
+const camKet = require('../controllers/camKet');
+router.get('/baithi/:id/cam-ket', camKet.getCamKetForBaithi)
+router.post('/baithi/:id/cam-ket', camKet.signCamKet)
+
 const fanpage = require('../controllers/fanpage');
 router.post('/fanpage-click', fanpage.logClick);
 router.get('/sumary/fanpage', fanpage.publicList);

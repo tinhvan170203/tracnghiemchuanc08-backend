@@ -116,6 +116,7 @@ const videoRoute = require('./routes/video');
 const learningRoute = require('./routes/learning');
 const knowledgeRoute = require('./routes/knowledge');
 const chatRoute = require('./routes/chat');
+const baoCaoRoute = require('./routes/baoCao');
 
 app.use('/api/public', commonRoute);
 app.use('/api/learning', learningRoute);
@@ -126,6 +127,8 @@ app.use('/api/cau-hoi', cauhoiRoute);
 app.use('/api/ai-knowledge', knowledgeRoute);
 app.use('/api/chat-gpt', chatRoute);
 app.use('/api/chat-gpt', chatRoute);
+/** Module báo cáo thống kê (tách riêng) — G1: template/kỳ/nhập/thông báo; G2 Excel; G3 C08 */
+app.use('/api/bao-cao', baoCaoRoute);
 app.use('/api', donviRoute);
 const path = require("path");
 const generateCertificate = require('./certicate.js');
@@ -256,8 +259,15 @@ const fanpageController = require('./controllers/fanpage')
 app.get('/api/public/sumary/fanpage', fanpageController.publicList)
 const aichatController = require('./controllers/aichat')
 app.get('/api/public/sumary/ai-chat', aichatController.publicList)
+const monthiController = require('./controllers/monthi')
+app.get('/api/public/sumary/cau-hoi-sai', monthiController.publicThongKeCauHoiSai)
 // chuc nang rieng cua c08
-app.get('/api/dia-phuong/list', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.getDiaphuongs);
+app.get('/api/dia-phuong/list', middlewareController.verifyToken, checkRole([
+  'xem domain địa phương',
+  'xem thống kê toàn quốc',
+  'xem fanpage toàn quốc',
+  'xem hỏi đáp AI toàn quốc',
+]), c08controller.getDiaphuongs);
 app.post('/api/dia-phuong', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.addDiaphuong);
 app.put('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.updatedDiaphuong);
 app.delete('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('xem domain địa phương'), c08controller.deleteDiaphuong);
@@ -265,6 +275,7 @@ app.delete('/api/dia-phuong/:id', middlewareController.verifyToken, checkRole('x
 app.get('/api/toan-quoc', middlewareController.verifyToken, checkRole('xem thống kê toàn quốc'), c08controller.sumaryKetquas)
 app.get('/api/toan-quoc/fanpage', middlewareController.verifyToken, checkRole('xem fanpage toàn quốc'), c08controller.fetchFanpageClicksToanquoc)
 app.get('/api/toan-quoc/ai-chat', middlewareController.verifyToken, checkRole('xem hỏi đáp AI toàn quốc'), c08controller.fetchAiChatToanquoc)
+app.get('/api/toan-quoc/cau-hoi-sai', middlewareController.verifyToken, checkRole('xem thống kê toàn quốc'), c08controller.fetchCauHoiSaiToanquoc)
 
 const PORT = process.env.PORT || 4000;
 const { startExportWorker } = require("./services/exportJobWorker");

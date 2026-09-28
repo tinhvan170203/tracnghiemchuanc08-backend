@@ -6,6 +6,11 @@ const userSchema = new Schema({
     tentaikhoan: {
         type: String
     },
+    /** Tên hiển thị (dùng trên báo cáo, danh sách…) — trống thì dùng tentaikhoan */
+    tenHienThi: {
+        type: String,
+        default: "",
+    },
     matkhau: String,
     thutu: Number,
     roles: [String],

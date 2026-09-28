@@ -34,6 +34,22 @@ const cuocthiSchema = new Schema({
     default: null,
     index: true,
   },
+  /** Ký cam kết sau nộp bài — snapshot nội dung hiệu lực của cuộc */
+  camKet: {
+    enabled: { type: Boolean, default: false },
+    mode: { type: String, enum: ["template", "custom"], default: "custom" },
+    templateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CamKetTemplates",
+      default: null,
+    },
+    snapshot: {
+      ten: { type: String, default: "" },
+      questions: { type: Array, default: [] },
+      freeText: { type: Schema.Types.Mixed, default: null },
+      signature: { type: Schema.Types.Mixed, default: null },
+    },
+  },
 }, { timestamps: true });
 
 cuocthiSchema.index({ monthi: 1, createdAt: -1 });

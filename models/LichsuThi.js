@@ -35,7 +35,27 @@ const lichsuthiSchema = new Schema({
   },
   soluongcauhoi: Number,
   socaudung: Number,
-  secretKey: String
+  secretKey: String,
+  /** Kết quả ký cam kết — lưu dạng text + ảnh chữ ký lúc ký (không phụ thuộc sửa mẫu sau) */
+  camKet: {
+    signedAt: { type: Date, default: null },
+    contentText: { type: String, default: "" },
+    questions: {
+      type: [
+        {
+          questionText: { type: String, default: "" },
+          optionsText: { type: [String], default: [] },
+          answerText: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
+    freeTextLabel: { type: String, default: "" },
+    freeTextAnswer: { type: String, default: "" },
+    signatureImage: { type: String, default: "" },
+    signatureRequired: { type: Boolean, default: false },
+    signerName: { type: String, default: "" },
+  },
 }, {timestamps: true});
 
 lichsuthiSchema.index({ id_cuocthi: 1, createdAt: 1 });
